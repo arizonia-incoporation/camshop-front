@@ -2,48 +2,65 @@ import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '../theme/theme';
+import { Controller } from 'react-hook-form';
 
 export default function InputField({
   label,
   icon,
-  secure = false,
-  value,
-  onChangeText,
-  placeholder,
-  keyboardType = 'default',
-  error,
+  name,
+  control,
+  secure,
+  ...props
 }) {
   const [hidden, setHidden] = useState(secure);
   const [focused, setFocused] = useState(false);
 
   return (
-    <View style={{ marginBottom: spacing.md }}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={[styles.wrap, focused && styles.wrapFocused, error && styles.wrapError]}>
-        {icon ? <Ionicons name={icon} size={18} color={colors.textMuted} style={{ marginRight: spacing.sm }} /> : null}
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={colors.textMuted}
-          secureTextEntry={hidden}
-          keyboardType={keyboardType}
-          autoCapitalize="none"
-          style={styles.input}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-        />
-        {secure ? (
-          <Ionicons
-            name={hidden ? 'eye-off-outline' : 'eye-outline'}
-            size={18}
-            color={colors.textMuted}
-            onPress={() => setHidden(!hidden)}
-          />
-        ) : null}
-      </View>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    </View>
+    <Controller
+      control={control}
+      name={name}
+      rules={{ required: true }}
+      render={({
+        field: { value, onChange, onBlur },
+        fieldState: { error },
+      }) => (
+        <View style={{ marginBottom: spacing.md }}>
+          {label ? <Text style={styles.label}>{label}</Text> : null}
+
+          <View style={[styles.wrap, focused && styles.wrapFocused]}>
+            {icon && (
+              <Ionicons
+                name={icon}
+                size={18}
+                color={colors.textMuted}
+                style={{ marginRight: spacing.sm }}
+              />
+            )}
+
+            <TextInput
+              value={value}
+              onChangeText={onChange}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              {...props}
+              secureTextEntry={hidden}
+              placeholderTextColor={colors.textMuted}
+              style={styles.input}
+            />
+
+            {secure && (
+              <Ionicons
+              name={hidden ? "eye-off-outline" : "eye-outline"}
+              size={18}
+              color={colors.textMuted}
+              onPress={() => setHidden(!hidden)}
+              />
+            )}
+          </View>
+          <Text style={styles.errorText}>{error?.message}</Text>
+        </View>
+      )}
+    />
   );
 }
 

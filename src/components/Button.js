@@ -11,6 +11,7 @@ export default function Button({
   icon = null,
   style,
   fullWidth = true,
+  subtitle = null
 }) {
   const isDisabled = disabled || loading;
 
@@ -21,8 +22,8 @@ export default function Button({
     ghost: { backgroundColor: 'transparent' },
   };
 
-  const textColor = {
-    primary: colors.navy,
+  const textColor = { 
+    primary: colors.white,
     secondary: colors.white,
     outline: colors.navy,
     ghost: colors.teal,
@@ -38,11 +39,16 @@ export default function Button({
         variantStyles[variant],
         fullWidth && { alignSelf: 'stretch' },
         isDisabled && { opacity: 0.5 },
-        style,
+        {...style},
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={textColor[variant]} />
+        <View style={styles.row}>
+          <ActivityIndicator color={textColor[variant]} />
+          <Text style={[typography.button, { color: textColor[variant] }, icon && { marginLeft: spacing.sm }]}>
+            {subtitle}
+          </Text>
+        </View>
       ) : (
         <View style={styles.row}>
           {icon}

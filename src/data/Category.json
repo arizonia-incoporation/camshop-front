@@ -1,0 +1,354 @@
+[
+  {
+    "id": "f1c50657-79da-4126-8910-c1f4c1c18967",
+    "name": "Electronics & Technology",
+    "slug": "electronics-&-technology",
+    "icon": "hardware-chip-outline",
+    "description": "Smart living, seamless performance.",
+    "children": [
+      {
+        "id": "4ba4c55f-1129-4cd3-bab5-8633aa948423",
+        "name": "Smartphones & Accessories",
+        "slug": "smartphones-&-accessories",
+        "icon": "phone-portrait-outline",
+        "description": "Stay connected with modern mobile devices and essential accessories."
+      },
+      {
+        "id": "40be7e03-232b-490c-8760-f9910876327a",
+        "name": "Computers & Laptops",
+        "slug": "computers-&-laptops",
+        "icon": "laptop-outline",
+        "description": "Power your productivity with high-performance laptops and setups."
+      },
+      {
+        "id": "7148af77-bde8-46f9-ac4c-e371c03af639",
+        "name": "Smart Home Devices",
+        "slug": "smart-home-devices",
+        "icon": "wifi-outline",
+        "description": "Automate your living space with intuitive smart home technology."
+      },
+      {
+        "id": "6ce84f9f-0d33-4861-bd19-b86cb080102b",
+        "name": "Audio & Headphones",
+        "slug": "audio-&-headphones",
+        "icon": "headset-outline",
+        "description": "Immerse yourself in crystal-clear audio and wireless listening."
+      },
+      {
+        "id": "2dca3784-50d2-4fa3-86b6-ac6da4672308",
+        "name": "Wearable Technology",
+        "slug": "wearable-technology",
+        "icon": "watch-outline",
+        "description": "Track your health and stay connected right from your wrist."
+      }
+    ]
+  },
+  {
+    "id": "ab49fc77-bf19-45c4-b810-66a0cc6e7e33",
+    "name": "Apparel & Fashion",
+    "slug": "apparel-&-fashion",
+    "icon": "shirt-outline",
+    "description": "Define your style, embrace your confidence.",
+    "children": [
+      {
+        "id": "e9932e43-d017-4bff-b55a-a153b45a45af",
+        "name": "Casual & Everyday Wear",
+        "slug": "casual-&-everyday-wear",
+        "icon": "shirt-outline",
+        "description": "Effortless styles and comfortable everyday clothing essentials."
+      },
+      {
+        "id": "51331ac1-5e9f-47fc-a11c-9da115e0b35e",
+        "name": "Athletic & Activewear",
+        "slug": "athletic-&-activewear",
+        "icon": "fitness-outline",
+        "description": "Engineered for movement, performance, and workout comfort."
+      },
+      {
+        "id": "8ebfab2a-879d-4df2-aa71-0bf6ff2985b5",
+        "name": "Formal & Business Attire",
+        "slug": "formal-&-business-attire",
+        "icon": "briefcase-outline",
+        "description": "Sharp tailoring and elegant outfits for professional occasions."
+      },
+      {
+        "id": "e0bbf435-c2a5-4009-b6dd-04a839914e34",
+        "name": "Footwear",
+        "slug": "footwear",
+        "icon": "footsteps-outline",
+        "description": "Step out in comfort with everyday sneakers, boots, and heels."
+      },
+      {
+        "id": "b9099b6e-e94b-4848-acea-1392f1bd5c99",
+        "name": "Accessories & Jewelry",
+        "slug": "accessories-&-jewelry",
+        "icon": "glasses-outline",
+        "description": "Timeless timepieces, designer bags, and statement jewelry."
+      }
+    ]
+  },
+  {
+    "id": "bf0b485a-8590-4421-a51c-7eb334158184",
+    "name": "Home & Living",
+    "slug": "home-&-living",
+    "icon": "home-outline",
+    "description": "Spaces designed for comfort, styled for life.",
+    "children": [
+      {
+        "id": "9b6a10f0-949e-4a50-af12-f9255b461297",
+        "name": "Furniture",
+        "slug": "furniture",
+        "icon": "easel-outline",
+        "description": "Beautifully crafted statement pieces designed for everyday spaces."
+      },
+      {
+        "id": "42270503-ef8d-4ddf-b430-8f4283c5d704",
+        "name": "Home Decor",
+        "slug": "home-decor",
+        "icon": "color-palette-outline",
+        "description": "Curated wall art, rugs, and accents to personalise your home."
+      },
+      {
+        "id": "18e5cd5c-adc3-44c2-b193-52fd1c1a0f4b",
+        "name": "Kitchen & Dining",
+        "slug": "kitchen-&-dining",
+        "icon": "restaurant-outline",
+        "description": "High-end cookware, modern dinnerware, and smart appliances."
+      },
+      {
+        "id": "cf0b6dee-0b33-44c2-ac9e-b825b018ed77",
+        "name": "Bedding & Bath",
+        "slug": "bedding-&-bath",
+        "icon": "water-outline",
+        "description": "Plush linens, soft comforters, and spa-quality bath towels."
+      },
+      {
+        "id": "dee8bae4-97a3-4754-aae6-488b240f5618",
+        "name": "Tools & Home Improvement",
+        "slug": "tools-&-home-improvement",
+        "icon": "construct-outline",
+        "description": "Essential equipment and hardware for modern space upgrades."
+      }
+    ]
+  },
+  {
+    "id": "4b2015b6-7611-4f1a-b096-b89dfd1b5369",
+    "name": "Beauty & Personal Care",
+    "slug": "beauty-&-personal-care",
+    "icon": "sparkles-outline",
+    "description": "Radiance, ritual, and everyday luxury.",
+    "children": [
+      {
+        "id": "34956141-831f-4caa-8dd8-9a88d96c2b5a",
+        "name": "Skincare",
+        "slug": "skincare",
+        "icon": "sparkles-outline",
+        "description": "Botanical serums and rich moisturizers for a glowing complexion."
+      },
+      {
+        "id": "91aae2ea-b870-485e-9253-30d98944a42e",
+        "name": "Cosmetics & Makeup",
+        "slug": "cosmetics-&-makeup",
+        "icon": "brush-outline",
+        "description": "High-pigment formulas and tools to express your individuality."
+      },
+      {
+        "id": "51cc47ad-19d0-4145-8869-babec0fb9b59",
+        "name": "Hair Care",
+        "slug": "hair-care",
+        "icon": "cut-outline",
+        "description": "Nourishing treatments, shampoos, and styling tools for vibrant hair."
+      },
+      {
+        "id": "09606d32-d86c-43d4-8c42-b750bcc8edc4",
+        "name": "Fragrances",
+        "slug": "fragrances",
+        "icon": "flower-outline",
+        "description": "Signature scents, luxury perfumes, and artisanal colognes."
+      },
+      {
+        "id": "037b6f83-06ec-4c13-9414-8ee29f4c680c",
+        "name": "Personal Hygiene",
+        "slug": "personal-hygiene",
+        "icon": "body-outline",
+        "description": "Gentle essentials for daily wellness, bath, and body care."
+      }
+    ]
+  },
+  {
+    "id": "ab6b9d6f-12a1-4010-8478-ea6c4286a534",
+    "name": "Health, Wellness & Self-Care",
+    "slug": "health,-wellness-&-self-care",
+    "icon": "heart-outline",
+    "description": "Nourish your body, balance your mind.",
+    "children": [
+      {
+        "id": "f31999d0-b424-4663-89e2-ce88f4658306",
+        "name": "Vitamins & Supplements",
+        "slug": "vitamins-&-supplements",
+        "icon": "medkit-outline",
+        "description": "Clean-ingredient vitamins and supplements for overall vitality."
+      },
+      {
+        "id": "26231d9d-8a24-4d2b-be44-7b4a01bfa678",
+        "name": "Aromatherapy & Relaxation",
+        "slug": "aromatherapy-&-relaxation",
+        "icon": "cloudy-night-outline",
+        "description": "Calming essential oil diffusers and mists for peaceful spaces."
+      },
+      {
+        "id": "0c37925e-e6db-4ed7-9fb7-1a84f65bf658",
+        "name": "Herbal Teas & Wellness Brews",
+        "slug": "herbal-teas-&-wellness-brews",
+        "icon": "cafe-outline",
+        "description": "Organic botanical teas and brews to nourish mind and body."
+      },
+      {
+        "id": "b5531909-3212-458e-b147-7098ec9b7121",
+        "name": "Massagers & Body Recovery",
+        "slug": "massagers-&-body-recovery",
+        "icon": "pulse-outline",
+        "description": "Targeted massage tools and therapies to relieve daily tension."
+      },
+      {
+        "id": "44222fcf-b0be-4ac3-b563-a0e4891e155b",
+        "name": "Mindfulness & Sleep Essentials",
+        "slug": "mindfulness-&-sleep-essentials",
+        "icon": "moon-outline",
+        "description": "Sleep tools and journals designed to promote restful slumber."
+      }
+    ]
+  },
+  {
+    "id": "2a5e89c1-5427-406d-8f83-1eb09bbc0361",
+    "name": "Services",
+    "slug": "services",
+    "icon": "build-outline",
+    "description": "Professional solutions, handled with care.",
+    "children": [
+      {
+        "id": "c8d74030-ebb2-47ab-b25b-47135139ad40",
+        "name": "Laundry",
+        "slug": "laundry",
+        "icon": "shirt-outline",
+        "description": "Seamless garment care and professional laundry solutions."
+      },
+      {
+        "id": "59292aa9-cb70-4297-930b-51fa47e3b203",
+        "name": "Repairs",
+        "slug": "repairs",
+        "icon": "hammer-outline",
+        "description": "Expert diagnostic and repair services for essential items."
+      },
+      {
+        "id": "82f59132-a02c-43c9-9f08-7ac70a16b18b",
+        "name": "Photography",
+        "slug": "photography",
+        "icon": "camera-outline",
+        "description": "Capturing brand stories and special moments with fine visuals."
+      },
+      {
+        "id": "a95a12ab-da64-4aaa-8c06-4e0693e87023",
+        "name": "Painting",
+        "slug": "painting",
+        "icon": "color-fill-outline",
+        "description": "Flawless finishes and professional interior color craftsmanship."
+      },
+      {
+        "id": "c9e98789-fa6a-40fb-b794-81c9074f74ee",
+        "name": "Printing",
+        "slug": "printing",
+        "icon": "print-outline",
+        "description": "High-definition customized prints for business and branding."
+      }
+    ]
+  },
+  {
+    "id": "642dc131-a559-4628-bcdf-7a3afe23ad9c",
+    "name": "Furniture",
+    "slug": "furniture",
+    "icon": "bed-outline",
+    "description": "Crafted for comfort, curated for style.",
+    "children": [
+      {
+        "id": "a4ae3898-0ab3-4ac5-b862-68495a73ed24",
+        "name": "Desks",
+        "slug": "desks",
+        "icon": "desktop-outline",
+        "description": "Sleek workspace setups designed to enhance daily productivity."
+      },
+      {
+        "id": "bdbfb2cb-b880-4608-8675-616af20b3e51",
+        "name": "Chairs",
+        "slug": "chairs",
+        "icon": "pin-outline",
+        "description": "Ergonomic office seating and modern dining room chairs."
+      },
+      {
+        "id": "afd9fafc-30ae-4427-9b90-22598b3a8d5f",
+        "name": "Beds",
+        "slug": "beds",
+        "icon": "bed-outline",
+        "description": "Crafted bed frames and support bases built for deep rest."
+      },
+      {
+        "id": "c3c7f5d9-38f0-481a-884f-d44388814559",
+        "name": "Storage",
+        "slug": "storage",
+        "icon": "archive-outline",
+        "description": "Minimalist shelving and cabinets to keep clutter neatly organized."
+      },
+      {
+        "id": "ba08af10-0ce6-4d8f-b6ee-498f46cc80c4",
+        "name": "Decor",
+        "slug": "decor",
+        "icon": "sparkler-outline",
+        "description": "Finishing accent pieces and decorative objects for every room."
+      }
+    ]
+  },
+  {
+    "id": "57f69507-c0ae-4a95-a1d5-2dfcad404579",
+    "name": "Food & Beverages",
+    "slug": "food-&-beverages",
+    "icon": "fast-food-outline",
+    "description": "Fresh flavors, everyday essentials.",
+    "children": [
+      {
+        "id": "46084d5a-ca24-4dd5-8fc2-bacf73b7dc01",
+        "name": "Groceries",
+        "slug": "groceries",
+        "icon": "cart-outline",
+        "description": "Fresh ingredients and everyday pantry essentials delivered to you."
+      },
+      {
+        "id": "d4228e06-aab4-4b1a-8c50-690281e74625",
+        "name": "Snacks",
+        "slug": "snacks",
+        "icon": "nutrition-outline",
+        "description": "Wholesome pick-me-ups and artisanal savory treats."
+      },
+      {
+        "id": "a92e34d2-8245-45b8-8ad2-0fcec3cdea00",
+        "name": "Beverages",
+        "slug": "beverages",
+        "icon": "wine-outline",
+        "description": "Artisanal roasts, refreshing juices, and specialty drinks."
+      },
+      {
+        "id": "0e31511e-86ec-473a-b3d4-8191255bfb61",
+        "name": "Campus Meals",
+        "slug": "campus-meals",
+        "icon": "fast-food-outline",
+        "description": "Quick, hearty, and budget-friendly meals crafted for busy days."
+      },
+      {
+        "id": "1f144824-77e0-4ecf-bada-535f2de16e80",
+        "name": "Baked Goods",
+        "slug": "baked-goods",
+        "icon": "pizza-outline",
+        "description": "Oven-fresh bread, rustic loaves, and sweet daily pastries."
+      }
+    ]
+  }
+]
