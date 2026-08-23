@@ -1,29 +1,42 @@
 {
   "expo": {
-    "name": "Camshop",
+    "name": "Cam Shop Beta",
     "slug": "camshop",
+    "scheme": "camshop",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/camshop_logo.png",
     "userInterfaceStyle": "light",
     "splash": {
       "backgroundColor": "#0B2545"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/camshop_logo.png",
         "backgroundColor": "#0B2545"
-      }
+      },
+      "package": "com.arizonia_inc.camshop",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/camshop_logo.png",
+      "bundler": "metro"
     },
     "plugins": [
-      "expo-asset"
-    ]
+      "expo-asset",
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4502a11c-7507-4934-89f0-3a7469ada09b"
+      }
+    },
+    "owner": "arizonia_inc"
   }
 }
