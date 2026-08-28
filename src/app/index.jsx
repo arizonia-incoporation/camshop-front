@@ -1,25 +1,26 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import React, { useEffect } from "react";
+import { View, Text, StyleSheet, Image, ActivityIndicator } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 
-import Logo from '../components/Logo';
-import Button from '../components/Button';
-import { colors, spacing, typography } from '../theme/theme';
-import { useAuth } from '../context/AuthContext';
+import Logo from "../components/Logo";
+import Button from "../components/Button";
+import { colors, spacing, typography } from "../theme/theme";
+import { useAuth } from "../context/AuthContext";
 
 export default function WelcomeScreen() {
   const navigation = useRouter();
   const { isAuthenticated, authing } = useAuth();
+
   useEffect(() => {
     if (isAuthenticated) return navigation.push("/home");
-    console.log(isAuthenticated)
-  },[isAuthenticated])
+    console.log(isAuthenticated);
+  }, [isAuthenticated]);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.innerContainer}>
         <View style={styles.hero}>
-          {/* <Logo size={84} /> */}
           <Logo size={84} />
           <Text style={styles.brand}>CamShop</Text>
           <Text style={styles.tagline}>
@@ -67,10 +68,16 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    alignItems: "center", // Centers innerContainer horizontally on web
+  },
   innerContainer: {
     width: "100%",
-    maxWidth: 800,
+    maxWidth: 480, // Reduced from 800 to 480 for a clean mobile view frame on desktop
     alignSelf: "center",
+    marginHorizontal: "auto", // Enforces horizontal centering in web CSS
     flex: 1,
     paddingHorizontal: spacing.lg,
     justifyContent: "space-between",
@@ -78,10 +85,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
-  },
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
   },
   hero: { alignItems: "center", marginTop: spacing.xl },
   brand: { ...typography.display, marginTop: spacing.sm },
