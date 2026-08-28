@@ -247,8 +247,6 @@ const BuyChapChapScreen = () => {
       total: 0,
     };
 
-    console.log("Order Data:", orderData);
-
     // Simulate API call
     try {
       await AppCalls.post("/order/chap", orderData);

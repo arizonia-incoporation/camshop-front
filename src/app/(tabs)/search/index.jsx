@@ -21,6 +21,7 @@ import { useRouter } from "expo-router";
 import EmptyState from "../../../components/cards/emptyCard";
 import AppCalls from "../../../utils/network";
 import categories from "../../../data/Category.json";
+import { colors, spacing } from "../../../theme/theme";
 
 const { width } = Dimensions.get("window");
 
@@ -768,56 +769,58 @@ const SearchScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#334155" />
-        </TouchableOpacity>
+      <View style={styles.innerContainer}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#334155" />
+          </TouchableOpacity>
 
-        <View style={styles.searchContainer}>
-          <Ionicons
-            name="search"
-            size={20}
-            color="#999999"
-            style={styles.searchIcon}
-          />
-          <TextInput
-            ref={inputRef}
-            style={styles.searchInput}
-            placeholder="Search products, vendors..."
-            placeholderTextColor="#999999"
-            value={searchQuery}
-            onChangeText={(text) => {
-              setSearchQuery(text);
-              if (!text.trim()) {
-                setSearchPerformed(false);
-                setTabs([]);
-                setProducts([]);
-                setVendors([]);
-                setIsSearching(false);
-              }
-            }}
-            returnKeyType="search"
-            onSubmitEditing={() => handleSearch(searchQuery)}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              onPress={handleClearSearch}
-              style={styles.clearButton}
-            >
-              <Ionicons name="close-circle" size={20} color="#999999" />
-            </TouchableOpacity>
-          )}
+          <View style={styles.searchContainer}>
+            <Ionicons
+              name="search"
+              size={20}
+              color="#999999"
+              style={styles.searchIcon}
+            />
+            <TextInput
+              ref={inputRef}
+              style={styles.searchInput}
+              placeholder="Search products, vendors..."
+              placeholderTextColor="#999999"
+              value={searchQuery}
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                if (!text.trim()) {
+                  setSearchPerformed(false);
+                  setTabs([]);
+                  setProducts([]);
+                  setVendors([]);
+                  setIsSearching(false);
+                }
+              }}
+              returnKeyType="search"
+              onSubmitEditing={() => handleSearch(searchQuery)}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={handleClearSearch}
+                style={styles.clearButton}
+              >
+                <Ionicons name="close-circle" size={20} color="#999999" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-      </View>
 
-      {/* Content */}
-      {searchPerformed || searchQuery.trim()
-        ? renderSearchResults()
-        : renderInitialState()}
+        {/* Content */}
+        {searchPerformed || searchQuery.trim()
+          ? renderSearchResults()
+          : renderInitialState()}
+      </View>
     </SafeAreaView>
   );
 };
@@ -825,9 +828,20 @@ const SearchScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.bg,
     marginTop: StatusBar.currentHeight || 0,
   },
+    innerContainer: {
+      width: "100%",
+      maxWidth: 800,
+      alignSelf: "center",
+      flex: 1,
+      justifyContent: "space-between",
+      shadowColor: "#000",
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+    },
   header: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,9 +1,9 @@
-import axios from 'axios';
-import { storage } from '../context/AuthContext';
+import axios from "axios";
+import { storage } from "../context/AuthContext";
 
 // 1. Create an Axios instance
 const apiClient = axios.create({
-  baseURL: "http://localhost:3000/api",
+  baseURL: "https://camshop-server.onrender.com/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -23,7 +23,6 @@ apiClient.interceptors.request.use(
       }
 
       const token = await storage.getItem("userToken");
-      console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",token);
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -58,6 +57,18 @@ export default class AppCalls {
       );
     }
   }
+  static async patch(endpoint, options) {
+    try {
+      const res = await apiClient.patch(endpoint, options);
+      return res.data;
+    } catch (error) {
+      console.log(error)
+      throw new Error(
+        error.response?.data || error.message || "An error occurred",
+      );
+    }
+  }
+
   static async remove(endpoint, options) {
     try {
       const res = await apiClient.delete(endpoint, options);
@@ -69,4 +80,3 @@ export default class AppCalls {
     }
   }
 }
-

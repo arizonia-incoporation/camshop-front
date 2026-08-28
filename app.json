@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Cam Shop Beta",
+    "name": "Cam Shop",
     "slug": "camshop",
     "scheme": "camshop",
     "version": "1.0.0",
@@ -24,7 +24,8 @@
     },
     "web": {
       "favicon": "./assets/camshop_logo.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "static"
     },
     "plugins": [
       "expo-asset",

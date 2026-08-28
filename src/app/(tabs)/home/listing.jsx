@@ -21,6 +21,8 @@ import { useCart } from "../../../context/CartContext";
 import { colors } from "../../../theme/theme";
 import EmptyState from "../../../components/cards/emptyCard";
 import { useAuth } from "../../../context/AuthContext";
+import AdListingCard from "../../../components/create-advert/AdListingCard";
+import AdDetailModal from "../../../components/modals/AdDetailModal";
 
 const { width } = Dimensions.get("window");
 
@@ -39,6 +41,12 @@ const ListingScreen = () => {
   const { addToCart } = useCart();
   const { user } = useAuth();
 
+  const isAdvertListing =
+    type === "adverts" ||
+    type === "EVENT" ||
+    type === "LOST" ||
+    type === "FOUND";
+
   // State
   const [loadingData, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -52,7 +60,9 @@ const ListingScreen = () => {
   const [categoryData, setCategoryData] = useState(null);
   const [filter, setFilter] = useState("all");
   const [showCategory, setShowCategory] = useState(false);
-    const [loading, setCartLoading] = useState(false);
+  const [loading, setCartLoading] = useState(false);
+  const [selectedAd, setSelectedAd] = useState(null);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
 
   // Animated header values
   const headerOpacity = scrollY.interpolate({
@@ -69,12 +79,6 @@ const ListingScreen = () => {
 
   // Load initial data
   useEffect(() => {
-    console.log(
-      "*****************************************************\n",
-      type,
-      "*****************************************************\n",
-      categoryId,
-    );
     loadData();
   }, [type, categoryId]);
 
@@ -94,7 +98,6 @@ const ListingScreen = () => {
       if (type === "categories" && categoryId) {
         // categories/:categoryId/products
         response = await AppCalls.get(`/categories/${categoryId}/products?page=${page}`);
-        console.log(response.data)
         result = response.data;
         setCategoryData(categoryDetails);
       } else {
@@ -102,21 +105,19 @@ const ListingScreen = () => {
         result = response.data;
       }
 
-      console.log(result)
-
       if (page === 1) {
-        setData(result.items || result.products || result.vendors || []);
+        setData(result?.items || result?.products || result?.vendors || []);
       } else {
         setData((prev) => [
           ...prev,
-          ...(result.items || result.products || result.vendors || []),
+          ...(result?.items || result?.products || result?.vendors || []),
         ]);
       }
 
       setPagination({
-        page: result.pagination.page || page,
-        hasNextPage: result.pagination.hasNextPage || false,
-        total: result.pagination.totalPages || 0,
+        page: result?.pagination?.page || page,
+        hasNextPage: result?.pagination?.hasNextPage || false,
+        total: result?.pagination?.totalPages || 0,
       });
     } catch (error) {
       console.error("Error loading data:", error);
@@ -127,12 +128,10 @@ const ListingScreen = () => {
     }
   };
 
-  const handleEdit = () => {
-    console.log("Damnnnnnnnnn yeeeeeeeeeeeeeee"); };
+  const handleEdit = () => { console.log("Damnnnnnnnnn yeeeeeeeeeeeeeee"); };
   
   const handleAddCart = async (id,vendorId) => {
     // setCartLoading(true);
-    console.log("Damnnnnnnnnn")
     try {
       await addToCart(id, vendorId);
     } catch (error) {
@@ -171,6 +170,11 @@ const ListingScreen = () => {
     if (!loadingMore && pagination.hasNextPage) {
       loadData(pagination.page + 1);
     }
+  };
+
+  const openAdDetails = (ad) => {
+    setSelectedAd(ad);
+    setDetailModalVisible(true);
   };
 
   const formatPrice = (price) => {
@@ -571,7 +575,18 @@ const ListingScreen = () => {
 
       <FlatList
         data={data}
-        renderItem={type === "products" ? renderProductItem : renderVendorItem}
+        renderItem={
+          isAdvertListing
+            ? ({ item }) => (
+                <AdListingCard
+                  item={item}
+                  onPress={() => openAdDetails(item)}
+                />
+              )
+            : type === "products"
+              ? renderProductItem
+              : renderVendorItem
+        }
         keyExtractor={(item) => `${type}-${item.id}`}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
@@ -593,6 +608,12 @@ const ListingScreen = () => {
             <Text style={styles.endOfListText}>End of {type}</Text>
           ) : null
         }
+      />
+      {/* Detail Modal Component */}
+      <AdDetailModal
+        visible={detailModalVisible}
+        item={selectedAd}
+        onClose={() => setDetailModalVisible(false)}
       />
     </View>
   );

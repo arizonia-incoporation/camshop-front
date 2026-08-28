@@ -328,8 +328,8 @@ const ProductDetailsScreen = () => {
               styles.buyNowButton,
               { marginLeft: 8 },
             ]}
-            >
             onPress={() => addToCart(product.id, product.vendorId)}
+          >
             <Ionicons name="cart-outline" size={22} color={colors.white} />
             <Text style={styles.buyNowText}>Add to Cart</Text>
           </TouchableOpacity>

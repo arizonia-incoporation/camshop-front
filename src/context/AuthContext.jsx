@@ -59,10 +59,8 @@ export function AuthProvider({ children }) {
   const checkAuth = async () => {
     try {
       const res = await AppCalls.get("/auth/check");
-      console.log(res)
       const { user } = res;
       if (user) {
-        console.log("user ****** ", user);
         setAuthState({ isAuthenticated: true, user });
       } else {
         setAuthState({ isAuthenticated: false, user: null });
@@ -77,8 +75,6 @@ export function AuthProvider({ children }) {
 
   // Modified storeUser function
   const storeUser = async (token, data) => {
-    console.log("froooooooom >>>>>>>>>>", data);
-
     // 1. Save credentials platform-agnostically
     await storage.setItem("userToken", token);
     const userString = JSON.stringify(data);
@@ -86,9 +82,6 @@ export function AuthProvider({ children }) {
 
     // 2. Update React auth state
     setAuthState({ isAuthenticated: true, user: data });
-
-    // 3. Re-verify auth state
-    await checkAuth();
 
     // 4. Trigger web permission prompt immediately after explicit user login action
     if (Platform.OS === "web") {
@@ -101,6 +94,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    setAuthState(state => ({ ...state, isAuthenticated: false }))
     try {
       // 1. Notify backend to clear push token (Optional: catch silently if network fails)
       await AppCalls.post("/auth/logout").catch((err) =>

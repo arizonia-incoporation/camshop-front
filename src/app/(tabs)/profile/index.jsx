@@ -20,11 +20,11 @@ import { useRouter } from "expo-router";
 import OrderItemCard from "../../../components/cards/orderItemCard";
 import AppCalls from "../../../utils/network";
 import EmptyState from "../../../components/cards/emptyCard";
+import PaymentMethodsBanner from "../../../components/PaymentMethodsBanner";
 
 const { width } = Dimensions.get("window");
 const DashboardScreen = () => {
   const { user, logout } = useAuth();
-  console.log(user);
   const navigation = useRouter();
   const [loading, setLoading] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -37,14 +37,11 @@ const DashboardScreen = () => {
   });
   const [userRole, setUserRole] = useState("user");
 
-  const [expandedId, setExpandedId] = useState(null);
-
   const handleCancelOrder = async (orderId) => {
     // API call to cancel ordertry
     try {
-      const response = await AppCalls.get("/order/" + orderId);
+      const response = await AppCalls.get("/order/cancel/" + orderId);
       loadDashboardData();
-      return response.data;
       return response.data;
     } catch (error) {
       throw new Error("Failed to cancel order, try again.");
@@ -55,7 +52,7 @@ const DashboardScreen = () => {
     // API call to confirm order with delivery fee
     try {
       const response = await AppCalls.post("/order/confirm", data);
-      loadDashboardData();
+      // loadDashboardData();
       return response.data;
     } catch (error) {
       throw new Error("Failed to confirm order, try again.");
@@ -86,23 +83,22 @@ const DashboardScreen = () => {
     try {
       const res = await AppCalls.get("/order?role=" + role);
       const result = res.data.items;
-      console.log(">>>>>>>>>>>>>>>>>>>>>>>>", res.data);
       const pendingOrders = result.filter(
         (item) => item.status === "PENDING",
       ).length;
       const statis = {
-        orders: res.data.items.length,
+        orders: res.data.pagination.totalItems,
         revenue: 3420000,
         pendingOrders: pendingOrders,
       };
       const recentOrders = result ? result.splice(0, 5) : [];
-      console.log("Recent orders:", recentOrders);
       setData({
         ...data,
         recentOrders,
         stats: statis,
       });
     } catch (error) {
+      console.log("geeeeeee", error)
       throw new Error("Failed to load orders.");
     } finally {
       setLoading(false);
@@ -117,8 +113,6 @@ const DashboardScreen = () => {
           : "/products";
       const res = await AppCalls.get(url);
       const result = res.data.products;
-      console.log("================================================================================", url);
-      console.log(res.data._count.products)
       const products = result ? result.splice(0, 5) : [];
       setData((c) => ({
         ...c,
@@ -249,6 +243,8 @@ const DashboardScreen = () => {
               <Text style={styles.statLabel}>Pending Delivery</Text>
             </View>
           </View>
+
+          <PaymentMethodsBanner />
 
           {/* Quick Actions */}
           <View style={styles.section}>
@@ -404,7 +400,7 @@ const DashboardScreen = () => {
                     order={item}
                     userRole={userRole.toLowerCase()}
                     onCancelOrder={handleCancelOrder}
-                    onViewDetails={() => {}}
+                    onViewDetails={loadDashboardData}
                   />
                 )}
               />
@@ -572,10 +568,7 @@ const DashboardScreen = () => {
                 </View>
                 <Text style={styles.quickActionLabel}>Orders</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickAction}
-                onPress={logout}
-              >
+              <TouchableOpacity style={styles.quickAction} onPress={logout}>
                 <View
                   style={[
                     styles.quickActionIcon,
@@ -644,7 +637,7 @@ const DashboardScreen = () => {
                     userRole={userRole.toLowerCase()}
                     onCancelOrder={handleCancelOrder}
                     onConfirmOrder={handleConfirmOrder}
-                    onViewDetails={() => {}}
+                    onViewDetails={loadDashboardData}
                   />
                 )}
                 ListFooterComponent={
@@ -739,13 +732,223 @@ const DashboardScreen = () => {
   };
 
   // Render Delivery guy Dashboard
+  const renderTransporterDashboard = () => {
+    const { stats, recentOrders } = data;
+    // Today's deliveries: if orders include a deliveryDate field, match to today; otherwise show recentOrders
+    const todaysDeliveries = (recentOrders || []).filter((o) => {
+      try {
+        if (!o.deliveryDate) return false;
+        return (
+          new Date(o.deliveryDate).toDateString() === new Date().toDateString()
+        );
+      } catch (e) {
+        return false;
+      }
+    });
+
+    const deliveriesToShow = todaysDeliveries.length
+      ? todaysDeliveries
+      : recentOrders || [];
+
+    return (
+      <>
+        {/* Transporter Profile Header */}
+        <View style={[styles.profileHeader, { backgroundColor: "#06b6d4" }]}>
+          <View style={styles.profileContent}>
+            <View style={styles.profileLeft}>
+              <View style={styles.avatarContainer}>
+                {user.profilepicture ? (
+                  <Image
+                    source={{ uri: user.profilepicture }}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarText}>
+                      {getInitials(user.username)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.profileInfo}>
+                <Text style={styles.userName}>{user.username}</Text>
+                <Text style={styles.userEmail}>{user.email}</Text>
+                <Text style={styles.userMeta}>
+                  Delivery Partner • Member since{" "}
+                  {new Date(user.createdAt).getFullYear()}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.editProfileButton}
+              onPress={() => navigation.push("/profile")}
+            >
+              <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {/* Quick Actions */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.quickActions}>
+              <TouchableOpacity
+                style={styles.quickAction}
+                // onPress={() => navigation.push("/profile/shift")}
+              >
+                <View
+                  style={[
+                    styles.quickActionIcon,
+                    { backgroundColor: "#fef3c7" },
+                  ]}
+                >
+                  <Ionicons name="bicycle" size={24} color={colors.lime} />
+                </View>
+                <Text style={styles.quickActionLabel}>Start Shift</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickAction}
+                onPress={() => navigation.navigate("/profile/listing")}
+              >
+                <View
+                  style={[
+                    styles.quickActionIcon,
+                    { backgroundColor: "#dbeafe" },
+                  ]}
+                >
+                  <Ionicons name="navigate" size={24} color="#0ea5e9" />
+                </View>
+                <Text style={styles.quickActionLabel}>Today's Deliveries</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickAction}
+                // onPress={() => navigation.push("/profile/earnings")}
+              >
+                <View
+                  style={[
+                    styles.quickActionIcon,
+                    { backgroundColor: "#dcfce7" },
+                  ]}
+                >
+                  <Ionicons name="cash" size={24} color="#22c55e" />
+                </View>
+                <Text style={styles.quickActionLabel}>Earnings</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.quickAction} onPress={logout}>
+                <View
+                  style={[
+                    styles.quickActionIcon,
+                    { backgroundColor: "#fce4ec" },
+                  ]}
+                >
+                  <Ionicons name="exit" size={24} color="#ef4444" />
+                </View>
+                <Text style={styles.quickActionLabel}>Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Today's Deliveries */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Today's Deliveries</Text>
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate("/profile/listing?title=My Deliveries")
+                }
+              >
+                <Text style={styles.seeAllText}>See All</Text>
+              </TouchableOpacity>
+            </View>
+
+            {loading && (
+              <View style={[styles.safeArea, styles.centered]}>
+                <ActivityIndicator size="large" color={colors.lime} />
+                <Text style={styles.loadingText}>Loading deliveries...</Text>
+              </View>
+            )}
+
+            {!loading && deliveriesToShow && (
+              <FlatList
+                data={deliveriesToShow}
+                contentContainerStyle={{ paddingBottom: 0 }}
+                ListEmptyComponent={
+                  <EmptyState
+                    variant="orders"
+                    onButtonPress={() => navigation.push("/home")}
+                  />
+                }
+                renderItem={({ item }) => (
+                  <OrderItemCard
+                    key={item.id}
+                    order={item}
+                    userRole={"transporter"}
+                    onCancelOrder={handleCancelOrder}
+                    onViewDetails={loadDashboardData}
+                    transporterId={user?.transporter?.id}
+                  />
+                )}
+              />
+            )}
+          </View>
+
+          {/* Delivery History */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Delivery History</Text>
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate("/profile/listing?title=Delivery History")
+                }
+              >
+                <Text style={styles.seeAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+
+            {!loading && recentOrders && (
+              <FlatList
+                data={recentOrders}
+                contentContainerStyle={{ paddingBottom: 0 }}
+                ListEmptyComponent={
+                  <EmptyState
+                    variant="orders"
+                    onButtonPress={() => navigation.push("/home")}
+                  />
+                }
+                renderItem={({ item }) => (
+                  <OrderItemCard
+                    key={item.id}
+                    order={item}
+                    userRole={"transporter"}
+                    onCancelOrder={handleCancelOrder}
+                    onViewDetails={() => {}}
+                    transporterId={user?.transporter?.id}
+                  />
+                )}
+              />
+            )}
+          </View>
+        </ScrollView>
+      </>
+    );
+  };
 
   const renderItem = () => {
     switch (userRole.toLocaleLowerCase()) {
       case "vendor":
         return renderVendorDashboard();
       case "transporter":
-        return null;
+        return renderTransporterDashboard();
       default:
         return renderUserDashboard();
     }

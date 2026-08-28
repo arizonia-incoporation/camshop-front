@@ -26,7 +26,6 @@ export function CartProvider({ children }) {
     setError(null);
     try {
       const res = await AppCalls.get("/cart/");
-      console.log(res?.data); 
       const data = res?.data?.cartItems || [];
       setItems(data);
     } catch (err) {
@@ -56,7 +55,6 @@ export function CartProvider({ children }) {
   const updateQty = async (productId, quantity) => {
     try {
       const res = await AppCalls.post("/cart/", { productId, quantity });
-      console.log(res.data);
       setItems(res.data.cartItems);
       showToast("success", "Cart updated!", "You can try preceed to checkout.");
     } catch (error) {
@@ -75,7 +73,6 @@ export function CartProvider({ children }) {
     setItems((prev) => prev.filter((i) => i.product.id !== productId));
     try {
       const res = await AppCalls.remove("/cart/" + productId);
-      console.log(res.data);
       showToast(
         "success",
         "Item removed!",

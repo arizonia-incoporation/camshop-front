@@ -22,6 +22,8 @@ import AppCalls from "../../../utils/network";
 import { useRouter } from "expo-router";
 import { useCart } from "../../../context/CartContext";
 import { useAuth } from "../../../context/AuthContext";
+import PaymentMethodsBanner from "../../../components/PaymentMethodsBanner";
+import { useNotifications } from "../../../context/NotificationContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -29,22 +31,18 @@ const HomeScreen = () => {
   const navigation = useRouter();
   const { addToCart } = useCart();
   const { user } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [scrollY] = useState(new Animated.Value(0));
-  const [modalAdVisible, setModalAdVisible] = useState(false);
   const [deliveryTime, setDeliveryTime] = useState("");
   const [topProducts, setProducts] = useState([]);
   const [topCategories, setCategories] = useState([]);
   const [topVendors, setVendors] = useState([]);
   const [ads, setAds] = useState([]);
   const [ourServices, setServices] = useState([]);
-  const [modalAd, setModalAd] = useState({});
-
-  // Ref for modal timer
-  const modalTimerRef = useRef(null);
 
   // Determine delivery time
   const getDeliveryTime = () => {
@@ -104,44 +102,30 @@ const HomeScreen = () => {
   };
 
   useEffect(() => {
-    setLoading(true)
     // Set delivery time
     setDeliveryTime(getDeliveryTime());
 
     loadData()
 
-    // Show modal ad after 5 seconds
-    modalTimerRef.current = setTimeout(() => {
-      setModalAdVisible(true);
-    }, 5000);
-
-    return () => {
-      if (modalTimerRef.current) {
-        clearTimeout(modalTimerRef.current);
-      }
-    };
   }, []);
 
   const loadData = async () => {
+    setLoading(true);
     try {
       const res = await AppCalls.get("/pages/");
-      const { data: { products, vendors, categories, services, ads } } = res;
+      const {
+        data: { products, vendors, categories, services, ads, modalads },
+      } = res;
 
       setProducts(products.items);
       setVendors(vendors.items);
       setCategories(categories.items);
       setServices(services);
       setAds(ads)
-      setModalAd({
-        id: "1",
-        title: "🎉 Special Offer!",
-        description: "Get 10% off your first order when you refer a friend",
-        image: "https://via.placeholder.com/300x200/FFA500/FFFFFF?text=Modal+Ad",
-        buttonText: "Refer Now",
-        buttonColor: colors.lime,
-      });
+      setLoadError(false);
     } catch (error) {
       console.error(error)
+      setLoadError(error.message||"Failed to load home")
     } finally {
       setLoading(false)
     }
@@ -282,7 +266,21 @@ const HomeScreen = () => {
         style={styles.categoriesScroll}
       >
         {topCategories.map((category) => (
-          <TouchableOpacity key={category.id} style={styles.categoryCard}>
+          <TouchableOpacity
+            key={category.id}
+            style={styles.categoryCard}
+            onPress={() =>
+              navigation.push({
+                pathname: "/home/listing",
+                params: {
+                  type: "categories",
+                  categoryId: category.id,
+                  categoryDetails: category,
+                  title: category.name,
+                },
+              })
+            }
+          >
             <View style={styles.categoryIcon}>
               <Ionicons name={category.image} size={28} color={colors.lime} />
             </View>
@@ -308,7 +306,10 @@ const HomeScreen = () => {
           <Text style={styles.adTitle}>{ad.title}</Text>
           <Text style={styles.adDescription}>{ad.description}</Text>
         </View>
-        <TouchableOpacity style={styles.adButton}>
+        <TouchableOpacity
+          onPress={() => navigation.back(ad.targetUrl)}
+          style={styles.adButton}
+        >
           <Text style={styles.adButtonText}>Learn More</Text>
           <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
         </TouchableOpacity>
@@ -444,7 +445,11 @@ const HomeScreen = () => {
       <Text style={styles.sectionTitle}>Quick Services</Text>
       <View style={styles.servicesGrid}>
         {ourServices.map((service) => (
-          <TouchableOpacity key={service.id} style={styles.serviceCard}>
+          <TouchableOpacity
+            onPress={() => navigation.push(service.route)}
+            key={service.id}
+            style={styles.serviceCard}
+          >
             <View
               style={[styles.serviceIcon, { backgroundColor: service.color }]}
             >
@@ -456,58 +461,18 @@ const HomeScreen = () => {
       </View>
     </View>
   );
-
-  const renderModalAd = () => (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={modalAdVisible}
-      onRequestClose={() => setModalAdVisible(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          <TouchableOpacity
-            style={styles.modalCloseButton}
-            onPress={() => setModalAdVisible(false)}
-          >
-            <Ionicons name="close" size={24} color="#334155" />
+  
+    if (loadError) {
+      return (
+        <SafeAreaView style={[styles.container, styles.center]}>
+          <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
+          <Text style={styles.errorText}>Failed to load.</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadData}>
+            <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
-
-          <View style={styles.modalImageContainer}>
-            <Image
-              source={{ uri: modalAd.image }}
-              style={styles.modalImage}
-              resizeMode="cover"
-            />
-          </View>
-
-          <Text style={styles.modalTitle}>{modalAd.title}</Text>
-          <Text style={styles.modalDescription}>{modalAd.description}</Text>
-
-          <TouchableOpacity
-            style={[
-              styles.modalButton,
-              { backgroundColor: modalAd.buttonColor },
-            ]}
-            onPress={() => {
-              setModalAdVisible(false);
-              // Handle action
-            }}
-          >
-            <Text style={styles.modalButtonText}>{modalAd.buttonText}</Text>
-            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.modalSkipButton}
-            onPress={() => setModalAdVisible(false)}
-          >
-            <Text style={styles.modalSkipText}>Skip</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
+        </SafeAreaView>
+      );
+    }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -536,10 +501,10 @@ const HomeScreen = () => {
                 color="#FFFFFF"
               />
               <View style={styles.headerBadge}>
-                <Text style={styles.headerBadgeText}>3</Text>
+                <Text style={styles.headerBadgeText}>{unreadCount}</Text>
               </View>
             </TouchableOpacity>
-            <TouchableOpacity
+            {/* <TouchableOpacity
               style={styles.headerIconButton}
               onPress={() => navigation.navigate("Cart")}
             >
@@ -547,17 +512,17 @@ const HomeScreen = () => {
               <View style={styles.headerBadge}>
                 <Text style={styles.headerBadgeText}>2</Text>
               </View>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
       </Animated.View>
 
       {/* Main Content */}
       {loading ? (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color={colors.lime} />
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
+        <View style={[styles.container, styles.center]}>
+          <ActivityIndicator size="large" color={colors.lime} />
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
       ) : (
         <Animated.ScrollView
           style={styles.scrollView}
@@ -576,6 +541,8 @@ const HomeScreen = () => {
 
           {/* Buy Chap Chap */}
           {renderBuyChapChap()}
+
+          <PaymentMethodsBanner />
 
           {/* Categories */}
           {renderCategories()}
@@ -599,9 +566,6 @@ const HomeScreen = () => {
           <View style={styles.bottomSpacing} />
         </Animated.ScrollView>
       )}
-
-      {/* Modal Ad */}
-      {renderModalAd()}
     </SafeAreaView>
   );
 };
@@ -1098,81 +1062,6 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 40,
-  },
-  // Modal Ad
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContainer: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 24,
-    width: width * 0.9,
-    maxWidth: 400,
-    alignItems: "center",
-    position: "relative",
-  },
-  modalCloseButton: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    backgroundColor: "#f8fafc",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1,
-  },
-  modalImageContainer: {
-    width: "100%",
-    height: 160,
-    borderRadius: 12,
-    overflow: "hidden",
-    marginBottom: 16,
-  },
-  modalImage: {
-    width: "100%",
-    height: "100%",
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#334155",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  modalDescription: {
-    fontSize: 14,
-    color: "#666666",
-    textAlign: "center",
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  modalButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 10,
-    gap: 8,
-    width: "100%",
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  modalSkipButton: {
-    marginTop: 12,
-  },
-  modalSkipText: {
-    fontSize: 14,
-    color: "#999999",
   },
 });
 

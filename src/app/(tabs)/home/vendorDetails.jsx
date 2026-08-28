@@ -45,7 +45,6 @@ const VendorProfileScreen = () => {
     setError(null);
     try {
       const res = await AppCalls.get("/vendors/" + vendorId);
-      console.log(res.data);
       setVendor(res.data);
     } catch (err) {
       setError(err.message || "Failed to load vendor profile");
