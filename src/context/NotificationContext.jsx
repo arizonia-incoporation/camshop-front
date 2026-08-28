@@ -50,16 +50,53 @@ export const NotificationProvider = ({ children }) => {
     try {
       setLoading(true);
       const data = await AppCalls.get("/notifications");
-      if (data) {
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.unreadCount || 0);
-      }
+      const payload = data?.data?.items;
+      const normalized = Array.isArray(payload) ? payload : [];
+      setNotifications(normalized);
+      setUnreadCount(
+        typeof data?.unreadCount === "number"
+          ? data.unreadCount
+          : normalized.filter((item) => !item.isRead).length,
+      );
     } catch (error) {
       console.error("Error fetching notifications:", error);
     } finally {
       setLoading(false);
     }
   }, [user]);
+
+  const getNotificationById = useCallback(async (notificationId) => {
+    if (!notificationId) return null;
+
+    try {
+      const response = await AppCalls.get(`/notifications/${notificationId}`);
+      const notification =
+        response?.notification || response?.data || response?.item || response;
+
+      if (!notification) return null;
+
+      setNotifications((prev) => {
+        const next = [...prev];
+        const index = next.findIndex(
+          (item) =>
+            (item?._id && item._id === notificationId) ||
+            (item?.id && item.id === notificationId),
+        );
+
+        if (index >= 0) {
+          next[index] = { ...next[index], ...notification };
+          return next;
+        }
+
+        return [notification, ...next];
+      });
+
+      return notification;
+    } catch (error) {
+      console.error("Error fetching notification by id:", error);
+      return null;
+    }
+  }, []);
 
   // 2. Register Device Token & sync with backend (Platform Aware)
   const initializePushNotifications = useCallback(async () => {
@@ -68,26 +105,26 @@ export const NotificationProvider = ({ children }) => {
       let token = null;
 
       if (Platform.OS === "web") {
-        // Handle Web Token via Firebase
         token = await requestWebNotificationPermission();
       } else {
-        // Handle Mobile Token via Expo
         token = await registerForPushNotificationsAsync();
       }
 
       if (!token) return;
       setPushToken(token);
 
-      // Sync if the token is new or missing from the user object
-      if (user.pushToken !== token) {
-        console.log(
-          `Syncing new ${Platform.OS} push token with backend:`,
-          token,
-        );
-        await AppCalls.post("/auth/edit/push-token", {
-          pushToken: token,
-          deviceType: Platform.OS === "web" ? "WEB" : "EXPO",
-        });
+      // Check against the correct token property on the user object
+      const existingToken =
+        Platform.OS === "web" ? user.webPushToken : user.pushToken;
+
+      if (existingToken !== token) {
+
+        const payload =
+          Platform.OS === "web"
+            ? { webPushToken: token }
+            : { pushToken: token };
+
+        await AppCalls.post("/auth/edit/push-token", payload);
       }
     } catch (error) {
       console.error(`Error registering push token on ${Platform.OS}:`, error);
@@ -106,9 +143,12 @@ export const NotificationProvider = ({ children }) => {
   const markAsRead = async (notificationId) => {
     try {
       setNotifications((prev) =>
-        prev.map((n) =>
-          n._id === notificationId ? { ...n, isRead: true } : n,
-        ),
+        prev.map((n) => {
+          const matches =
+            (n?._id && n._id === notificationId) ||
+            (n?.id && n.id === notificationId);
+          return matches ? { ...n, isRead: true } : n;
+        }),
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
       await AppCalls.patch(`/notifications/${notificationId}/read`);
@@ -120,6 +160,18 @@ export const NotificationProvider = ({ children }) => {
   // Centralized deep link router (Shared)
   const handleNotificationNavigation = useCallback((data) => {
     if (!data) return;
+
+    const notificationId =
+      data.notificationId || data.id || data._id || data.notification_id;
+
+    if (notificationId) {
+      router.push({
+        pathname: "/chat/[id]",
+        params: { id: String(notificationId) },
+      });
+      return;
+    }
+
     if (data.url) {
       router.push(data.url);
       return;
@@ -138,7 +190,6 @@ export const NotificationProvider = ({ children }) => {
       // --- WEB LISTENERS (Firebase) ---
       if (messaging) {
         const unsubscribe = onMessage(messaging, (payload) => {
-          console.log("Web foreground notification received:", payload);
           const newNotificationItem = {
             _id: payload.messageId || Date.now().toString(),
             title: payload.notification.title,
@@ -197,6 +248,7 @@ export const NotificationProvider = ({ children }) => {
         unreadCount,
         loading,
         fetchNotifications,
+        getNotificationById,
         markAsRead,
       }}
     >

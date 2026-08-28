@@ -25,6 +25,7 @@ import { colors, shadow } from "../../../theme/theme";
 import { useCart } from "../../../context/CartContext";
 import AppCalls from "../../../utils/network";
 import { showToast } from "../../../utils/toast";
+import PaymentMethodsBanner from "../../../components/PaymentMethodsBanner";
 
 const { width, height } = Dimensions.get("window");
 
@@ -124,7 +125,6 @@ const CheckoutScreen = () => {
     setLoading(true);
 
     const items = orderItems.map((item) => {
-      console.log("this order item ================",item)
       return {
         productId: item.product.id,
         vendorId: item?.vendorId,
@@ -140,7 +140,6 @@ const CheckoutScreen = () => {
     };
 
     try {
-      console.log("order items ---------------------",orderData)
       const res = await AppCalls.post("/order", orderData);
 
       showToast(
@@ -148,10 +147,6 @@ const CheckoutScreen = () => {
         "🎉 Order Placed!",
         `Vendors will confirm delivery fees and your order will be on its way!`,
       );
-
-      console.log("what the fuckkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk", loadCart())
-
-      console.log("---------------------------------------------",cartItems)
 
       router.push("/cart/OrderConfirmed")
 
@@ -169,7 +164,11 @@ const CheckoutScreen = () => {
 
   // Render Delivery Tab
   const renderDeliveryTab = () => (
-    <View style={styles.tabContent}>
+    <ScrollView
+      style={styles.tabContent}
+      contentContainerStyle={{ paddingBottom: 20 }}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.tabHeader}>
         <View style={styles.tabIconContainer}>
           <Ionicons name="location-sharp" size={40} color={colors.lime} />
@@ -192,7 +191,11 @@ const CheckoutScreen = () => {
                   errors.location && styles.inputWrapperError,
                 ]}
               >
-                <Ionicons name="location-outline" size={22} color={colors.lime} />
+                <Ionicons
+                  name="location-outline"
+                  size={22}
+                  color={colors.lime}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Hostel or location"
@@ -247,12 +250,16 @@ const CheckoutScreen = () => {
           </View>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 
   // Render Review Tab
   const renderReviewTab = () => (
-    <View style={styles.tabContent}>
+    <ScrollView
+      style={styles.tabContent}
+      contentContainerStyle={{ paddingBottom: 20 }}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.tabHeader}>
         <View style={styles.tabIconContainer}>
           <Ionicons name="receipt-sharp" size={40} color={colors.lime} />
@@ -321,6 +328,8 @@ const CheckoutScreen = () => {
           </View>
         ))}
 
+        <PaymentMethodsBanner style={styles.checkoutPaymentBanner} />
+
         {orderItems.length < 1 && (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconContainer}>
@@ -332,8 +341,48 @@ const CheckoutScreen = () => {
             </Text>
           </View>
         )}
+
+        {/* Order Summary */}
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryTitle}>Order Summary</Text>
+
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryLabelContainer}>
+              <Ionicons name="cube-outline" size={18} color="#666666" />
+              <Text style={styles.summaryLabel}>Subtotal</Text>
+            </View>
+            <Text style={styles.summaryValue}>{formatPrice(subtotal)}</Text>
+          </View>
+
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryLabelContainer}>
+              <Ionicons name="bicycle-outline" size={18} color="#666666" />
+              <Text style={styles.summaryLabel}>Delivery</Text>
+            </View>
+            <Text style={styles.summaryValuePending}>Vendor confirms</Text>
+          </View>
+
+          <View style={styles.summaryDivider} />
+
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryLabelContainer}>
+              <Ionicons name="cash-outline" size={20} color={colors.lime} />
+              <Text style={styles.summaryTotalLabel}>Estimated Total</Text>
+            </View>
+            <Text style={styles.summaryTotalValue}>
+              {formatPrice(subtotal)}
+            </Text>
+          </View>
+
+          <View style={styles.deliveryNote}>
+            <Ionicons name="time-outline" size={16} color="#999999" />
+            <Text style={styles.deliveryNoteText}>
+              Final total including delivery will be confirmed by vendors
+            </Text>
+          </View>
+        </View>
       </ScrollView>
-    </View>
+    </ScrollView>
   );
 
   return (
@@ -383,59 +432,6 @@ const CheckoutScreen = () => {
             </TouchableOpacity>
           ) : (
             <>
-              {/* Order Summary */}
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>Order Summary</Text>
-
-                <View style={styles.summaryRow}>
-                  <View style={styles.summaryLabelContainer}>
-                    <Ionicons name="cube-outline" size={18} color="#666666" />
-                    <Text style={styles.summaryLabel}>Subtotal</Text>
-                  </View>
-                  <Text style={styles.summaryValue}>
-                    {formatPrice(subtotal)}
-                  </Text>
-                </View>
-
-                <View style={styles.summaryRow}>
-                  <View style={styles.summaryLabelContainer}>
-                    <Ionicons
-                      name="bicycle-outline"
-                      size={18}
-                      color="#666666"
-                    />
-                    <Text style={styles.summaryLabel}>Delivery</Text>
-                  </View>
-                  <Text style={styles.summaryValuePending}>
-                    Vendor confirms
-                  </Text>
-                </View>
-
-                <View style={styles.summaryDivider} />
-
-                <View style={styles.summaryRow}>
-                  <View style={styles.summaryLabelContainer}>
-                    <Ionicons
-                      name="cash-outline"
-                      size={20}
-                      color={colors.lime}
-                    />
-                    <Text style={styles.summaryTotalLabel}>
-                      Estimated Total
-                    </Text>
-                  </View>
-                  <Text style={styles.summaryTotalValue}>
-                    {formatPrice(subtotal)}
-                  </Text>
-                </View>
-
-                <View style={styles.deliveryNote}>
-                  <Ionicons name="time-outline" size={16} color="#999999" />
-                  <Text style={styles.deliveryNoteText}>
-                    Final total including delivery will be confirmed by vendors
-                  </Text>
-                </View>
-              </View>
               <TouchableOpacity
                 style={[
                   styles.placeOrderButton,
@@ -685,6 +681,10 @@ const styles = StyleSheet.create({
   },
   itemsContainer: {
     paddingBottom: 20,
+  },
+  checkoutPaymentBanner: {
+    marginHorizontal: 0,
+    marginTop: 8,
   },
   reviewItem: {
     flexDirection: "row",

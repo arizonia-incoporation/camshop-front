@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  Alert,
   Modal,
   ScrollView,
   TextInput,
@@ -18,8 +17,15 @@ import { Swipeable } from "react-native-gesture-handler";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { colors } from "../../theme/theme";
+import { colors, spacing } from "../../theme/theme";
+import AppCalls from "../../utils/network";
 import { showToast } from "../../utils/toast";
+import {
+  buildOrderCapabilities,
+  normalizeOrderShape,
+  STATUS_META,
+} from "../../utils/orderLifecycle";
+import { useRouter } from "expo-router";
 
 const deliverySchema = z.object({
   deliveryFee: z.string().min(1, "Please enter delivery fee"),
@@ -28,21 +34,38 @@ const deliverySchema = z.object({
 
 const OrderItemCard = ({
   order,
-  userRole, // 'user' or 'vendor'
+  userRole,
   onCancelOrder,
   onConfirmOrder,
   onViewDetails,
+  transporterId,
 }) => {
+  const navigation = useRouter();
   const [timeAgo, setTimeAgo] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState({
     cancelling: false,
-    confirming: false
+    confirming: false,
+    others: null
   });
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [drivers, setDrivers] = useState([]);
+  const [selectedDriver, setSelectedDriver] = useState(null);
+  const [claiming, setClaiming] = useState(false);
+  const [contentHeight, setContentHeight] = useState(0);
+  const [wasConfirmed, setWasConfirmed] = useState(false);
   const animationValue = useRef(new Animated.Value(0)).current;
-  
+  const normalizedOrder = normalizeOrderShape(order);
+  const safeStatus = normalizedOrder.status;
+  const orderCapabilities = buildOrderCapabilities(
+    normalizedOrder,
+    userRole,
+    transporterId,
+  );
+
   const {
     control,
     handleSubmit,
@@ -63,16 +86,17 @@ const OrderItemCard = ({
   }, [order?.orderedAt]);
 
   useEffect(() => {
+    const targetHeight = expanded ? contentHeight : 0;
     Animated.timing(animationValue, {
-      toValue: expanded ? 1 : 0,
-      duration: 300,
+      toValue: targetHeight,
+      duration: 260,
       useNativeDriver: false,
     }).start();
-  }, [expanded]);
+  }, [expanded, contentHeight]);
 
   const updateTimeAgo = () => {
     const now = new Date();
-    const orderDate = new Date(order.orderedAt || Date.now());
+    const orderDate = new Date(normalizedOrder.orderedAt || Date.now());
     const diffInSeconds = Math.floor((now - orderDate) / 1000);
 
     if (diffInSeconds < 60) {
@@ -105,77 +129,55 @@ const OrderItemCard = ({
   };
 
   const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
-      case "delivered":
-        return "#22c55e";
-      case "confirmed":
-        return "#0ea5e9";
-      case "processing":
-        return "#0ea5e9";
-      case "pending":
-        return colors.lime;
-      case "cancelled":
-        return "#ef4444";
-      default:
-        return "#666666";
-    }
+    return STATUS_META[status]?.accent || STATUS_META.pending.accent;
   };
 
   const getStatusIcon = (status) => {
-    switch (status) {
-      case "delivered":
-        return "checkmark-circle";
-      case "confirmed":
-        return "checkmark-circle";
-      case "processing":
-        return "time";
-      case "pending":
-        return "hourglass";
-      case "cancelled":
-        return "close-circle";
-      default:
-        return "ellipse";
-    }
+    return STATUS_META[status]?.icon || "ellipse";
   };
 
   const getStatusLabel = (status) => {
-    return status.charAt(0).toUpperCase() + status.slice(1);
+    return STATUS_META[status]?.label || "Pending";
   };
 
   const handleConfirmCancel = async () => {
-    setLoading({ ...loading, cancelling: true });
+    setLoading((prev) => ({ ...prev, cancelling: true }));
     try {
-      await onCancelOrder(order.id);
+      await onCancelOrder(normalizedOrder.id);
       setCancelModalVisible(false);
     } catch (error) {
       console.error("Error cancelling order:", error);
     } finally {
-      setLoading({ ...loading, cancelling: false });
+      setLoading((prev) => ({ ...prev, cancelling: false }));
     }
   };
 
   const handleConfirmOrderSubmit = async (data) => {
-    setLoading({ ...loading, confirming: true });
-    console.log({
-      id: order.id,
-      destination: order.order.location,
-      fees: parseFloat(data.deliveryFee),
-      note: data.note || "",
-    });
+    setLoading((prev) => ({ ...prev, confirming: true }));
     try {
       await onConfirmOrder({
-        id: order.id,
-        destination: order.order.location,
+        id: normalizedOrder.id,
+        destination: normalizedOrder.order.location,
         fees: parseFloat(data.deliveryFee),
         note: data.note || "",
       });
-      showToast("success","Order Confirmed","The client will be notified soon.")
+      setWasConfirmed(true);
+      showToast(
+        "success",
+        "Order Confirmed",
+        "The client will be notified soon.",
+      );
       setModalVisible(false);
+
+      // Prompt seller to assign delivery guy or leave open
+      if (userRole === "vendor") {
+        setAssignModalVisible(true);
+      }
     } catch (error) {
       console.error("Error confirming order:", error);
-      showToast("error","Confirmation Error",error.message)
+      showToast("error", "Confirmation Error", error.message);
     } finally {
-      setLoading({ ...loading, confirming: false });
+      setLoading((prev) => ({ ...prev, confirming: false }));
     }
   };
 
@@ -225,168 +227,460 @@ const OrderItemCard = ({
     );
   };
 
+  // Fetch available drivers for assignment when assign modal opens
+  const fetchDrivers = async () => {
+    try {
+      const res = await AppCalls.get("/transporters");
+      // normalize response
+      const list = res?.users || res?.items || res?.data?.items || res || [];
+      setDrivers(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.error("Failed to fetch drivers", err);
+      setDrivers([]);
+    }
+  };
+
+  useEffect(() => {
+    if (assignModalVisible) {
+      fetchDrivers();
+    }
+  }, [assignModalVisible]);
+
+  const assignToDriver = async () => {
+    if (!selectedDriver) {
+      showToast(
+        "error",
+        "Select driver",
+        "Please select a delivery guy to assign.",
+      );
+      return;
+    }
+
+    try {
+      setAssigning(true);
+      await AppCalls.patch(`/delivery/${order.id}/assign`, {
+        transporterId: selectedDriver.id || selectedDriver._id,
+      });
+      showToast("success", "Assigned", "Delivery guy assigned successfully");
+      setAssignModalVisible(false);
+      // let parent refresh if callback provided
+      onViewDetails && onViewDetails();
+    } catch (err) {
+      console.error("Assignment error", err);
+      showToast(
+        "error",
+        "Assignment failed",
+        err?.message || "Could not assign delivery guy",
+      );
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const leaveOpen = async () => {
+    // seller chose to leave order open for claim
+    setAssigning(true);
+    try {
+      await AppCalls.patch(`/delivery/${order.id}/assign`, {
+        transporterId: null,
+      });
+      showToast("success", "Open", "Order left open for drivers to claim");
+      setAssignModalVisible(false);
+      onViewDetails && onViewDetails();
+    } catch (err) {
+      console.error("Leave open error", err);
+      showToast("error", "Failed", err?.message || "Could not mark order open");
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const claimOrder = async () => {
+    try {
+      setClaiming(true);
+      await AppCalls.patch(`/delivery/${normalizedOrder.id}/claim`);
+      showToast("success", "Claimed", "You have claimed this delivery");
+      onViewDetails && onViewDetails();
+    } catch (err) {
+      console.error("Claim error", err);
+      showToast(
+        "error",
+        "Claim failed",
+        err?.message || "Someone else may have claimed this",
+      );
+      onViewDetails && onViewDetails();
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   const expandHeight = animationValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, order.status.toLowerCase() === "pending" ? 200 : 130],
+    inputRange: [0, Math.max(contentHeight, 1)],
+    outputRange: [0, Math.max(contentHeight, 1)],
   });
+
+  const handleActionPress = async (actionId) => {
+    if (actionId === "cancel") {
+      setCancelModalVisible(true);
+      return;
+    }
+
+    if (actionId === "confirm") {
+      setModalVisible(true);
+      return;
+    }
+
+    if (actionId === "claim") {
+      await claimOrder();
+      return;
+    }
+
+    if (actionId === "accept") {
+      setLoading((str) => ({ ...str, others: actionId }));
+      try {
+        await AppCalls.patch(`/delivery/${normalizedOrder.id}/accept`);
+        showToast("success", "Offer accepted", "You accepted this delivery.");
+        onViewDetails && onViewDetails();
+      } catch (error) {
+        showToast(
+          "error",
+          "Offer not accepted",
+          error?.message || "Could not accept this offer.",
+        );
+      } finally {
+        setLoading((str) => ({ ...str, others: null }));
+      }
+      return;
+    }
+
+    if (actionId === "reject") {
+      setLoading(str=>({...str,others:actionId}));
+      try {
+        await AppCalls.patch(`/delivery/${normalizedOrder.id}/reject`);
+        showToast(
+          "info",
+          "Offer rejected",
+          "This order is now available again.",
+        );
+        onViewDetails && onViewDetails();
+      } catch (error) {
+        showToast(
+          "error",
+          "Offer not rejected",
+          error?.message || "Could not reject this offer.",
+        );
+      } finally {
+        setLoading(str=>({...str,others:null}));
+      }
+      return;
+    }
+
+    if (actionId === "pick_up" || actionId === "vendor_pick_up") {
+      setLoading(str=>({...str,others:actionId}));
+      try {
+        await AppCalls.patch(`/delivery/${normalizedOrder.id}/status`, {
+          status: "PICKED_UP",
+        });
+        showToast(
+          "success",
+          "Picked up",
+          "The order has been marked as picked up.",
+        );
+        onViewDetails && onViewDetails();
+      } catch (error) {
+        showToast(
+          "error",
+          "Pick up failed",
+          error?.message || "Could not mark as picked up.",
+        );
+      } finally {
+        setLoading((str) => ({ ...str, others: null }));
+      }
+      return;
+    }
+
+    if (actionId === "deliver") {
+      setLoading((str) => ({ ...str, others: actionId }));
+      try {
+        await AppCalls.patch(`/delivery/${normalizedOrder.id}/status`, {
+          status: "DELIVERED",
+        });
+        showToast(
+          "success",
+          "Delivered",
+          "The order has been marked as delivered.",
+        );
+        onViewDetails && onViewDetails();
+      } catch (error) {
+        showToast(
+          "error",
+          "Delivery failed",
+          error?.message || "Could not mark as delivered.",
+        );
+      } finally {
+        setLoading((str) => ({ ...str, others: null }));
+      }
+      return;
+    }
+
+    if (actionId === "review") {
+      showToast(
+        "info",
+        "Review",
+        "Review flow starts after delivery is completed.",
+      );
+    }
+  };
+
+  const closeAssignModal = async () => {
+    setAssignModalVisible(false);
+
+    try {
+      await AppCalls.patch(`/delivery/${normalizedOrder.id}/assign`, {
+        transporterId: null,
+      });
+      showToast(
+        "success",
+        "Marked open",
+        "Order marked open for drivers to claim",
+      );
+      onViewDetails && onViewDetails();
+    } catch (err) {
+      showToast(
+        "info",
+        "Not marked open",
+        err?.message || "Could not mark order open automatically",
+      );
+    }
+  };
 
   return (
     <>
       <Swipeable
-        renderRightActions={
-          order.status.toLowerCase() !== "cancelled" && renderRightActions
-        }
-        overshootRight={order.status.toLowerCase() !== "cancelled" && false}
-        rightThreshold={order.status.toLowerCase() !== "cancelled" && 40}
-
+        renderRightActions={safeStatus !== "cancelled" && renderRightActions}
+        overshootRight={safeStatus !== "cancelled" && false}
+        rightThreshold={safeStatus !== "cancelled" && 40}
         renderLeftActions={
-          userRole === "vendor" &&
-          order.status.toLowerCase() === "pending" &&
-          renderLeftActions
+          userRole === "vendor" && safeStatus === "pending" && renderLeftActions
         }
         overshootLeft={
-          userRole === "vendor" &&
-          order.status.toLowerCase() === "pending" &&
-          false
+          userRole === "vendor" && safeStatus === "pending" && false
         }
-        leftThreshold={
-          userRole === "vendor" &&
-          order.status.toLowerCase() === "pending" &&
-          40
-        }
+        leftThreshold={userRole === "vendor" && safeStatus === "pending" && 40}
         friction={2}
       >
         <View style={styles.cardContainer}>
-          {/* Main Content */}
-          <View style={styles.mainContent}>
-            {/* Order Image/Icon */}
-            <View style={styles.imageContainer}>
-              {order.product.image ? (
-                <Image
-                  source={{
-                    uri: order.product.image,
-                  }}
-                  style={styles.orderImage}
-                />
-              ) : (
-                <View style={styles.orderIconPlaceholder}>
-                  <Ionicons name="receipt" size={30} color={colors.lime} />
-                </View>
-              )}
-              {order.items && order.items.length > 1 && (
-                <View style={styles.itemCountBadge}>
-                  <Text style={styles.itemCountText}>
-                    +{order.items.length - 1}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Order Info */}
-            <View style={styles.orderInfo}>
-              <Text style={styles.orderId}>Order #{order.id.slice(0, 8)}</Text>
-              <Text style={styles.orderId}>{order.product.name}</Text>
-              <Text style={styles.itemCount}>Quantity - {order.quantity || 0}</Text>
-              <Text style={styles.orderTotal}>{formatPrice(order.amount)}</Text>
-            </View>
-
-            {/* Status and Actions */}
-            <View style={styles.rightContent}>
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: getStatusColor(order.status) + "20" },
-                ]}
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => setExpanded((prev) => !prev)}
+          >
+            <View style={styles.mainContent}>
+              <TouchableOpacity
+                style={styles.imageContainer}
+                onPress={() =>
+                  navigation.push(
+                    "home/productDetails?productId=" +
+                      normalizedOrder.product.id,
+                  )
+                }
               >
-                <Ionicons
-                  name={getStatusIcon(order.status)}
-                  size={14}
-                  color={getStatusColor(order.status)}
-                />
-                <Text
-                  style={[
-                    styles.statusText,
-                    { color: getStatusColor(order.status) },
-                  ]}
-                >
-                  {getStatusLabel(order.status)}
+                {normalizedOrder.product.image ? (
+                  <Image
+                    source={{ uri: normalizedOrder.product.image }}
+                    style={styles.orderImage}
+                  />
+                ) : (
+                  <View style={styles.orderIconPlaceholder}>
+                    <Ionicons name="receipt" size={30} color={colors.lime} />
+                  </View>
+                )}
+                {Array.isArray(order?.items) && order.items.length > 1 && (
+                  <View style={styles.itemCountBadge}>
+                    <Text style={styles.itemCountText}>
+                      +{order.items.length - 1}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.orderInfo}>
+                <Text style={styles.orderId}>
+                  Order #{String(normalizedOrder.id).slice(0, 8)}
+                </Text>
+                <Text style={styles.orderName}>
+                  {normalizedOrder.product.name}
+                </Text>
+                <Text style={styles.itemCount}>
+                  Quantity - {normalizedOrder.quantity || 0}
+                </Text>
+                <Text style={styles.orderTotal}>
+                  {formatPrice(normalizedOrder.amount)}
                 </Text>
               </View>
-              <Text style={styles.orderTime}>{timeAgo}</Text>
-              <TouchableOpacity
-                style={styles.chevronButton}
-                onPress={() => setExpanded(!expanded)}
-              >
-                <Ionicons
-                  name={expanded ? "chevron-up" : "chevron-down"}
-                  size={20}
-                  color="#666666"
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
 
-          {/* Expanded Content */}
+              <View style={styles.rightContent}>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: getStatusColor(safeStatus) + "20" },
+                  ]}
+                >
+                  <Ionicons
+                    name={getStatusIcon(safeStatus)}
+                    size={14}
+                    color={getStatusColor(safeStatus)}
+                  />
+                  <Text
+                    style={[
+                      styles.statusText,
+                      { color: getStatusColor(safeStatus) },
+                    ]}
+                  >
+                    {getStatusLabel(safeStatus)}
+                  </Text>
+                </View>
+                <Text style={styles.orderTime}>{timeAgo}</Text>
+                <TouchableOpacity
+                  style={styles.chevronButton}
+                  onPress={() => setExpanded((prev) => !prev)}
+                >
+                  <Ionicons
+                    name={expanded ? "chevron-up" : "chevron-down"}
+                    size={20}
+                    color="#666666"
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableOpacity>
+
           <Animated.View
             style={[styles.expandableContent, { height: expandHeight }]}
           >
-            <View style={styles.expandableInner}>
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>
-                  Delivery Information
-                </Text>
-                <View style={styles.modalInfoRow}>
-                  <Ionicons name="location-outline" size={20} color="#666666" />
-                  <Text style={styles.modalInfoText}>
-                    {order.order.location || "Not specified"}
+            <View
+              style={styles.expandableInner}
+              onLayout={(event) => {
+                const height = event.nativeEvent.layout.height;
+                if (height > 0 && height !== contentHeight) {
+                  setContentHeight(height);
+                }
+              }}
+            >
+              {normalizedOrder.order.location && (
+                <View style={styles.locationRow}>
+                  <Ionicons name="location-outline" size={18} color="#666666" />
+                  <Text style={styles.locationText}>
+                    {normalizedOrder.order.location}
                   </Text>
                 </View>
-                {order.order.note && (
-                  <View style={styles.modalInfoRow}>
-                    <Ionicons name="create-outline" size={20} color="#666666" />
-                    <Text style={styles.modalInfoText}>{order.order.note}</Text>
-                  </View>
-                )}
-              </View>
-              <View style={styles.modalActions}>
-                {(userRole === "user" || userRole === "vendor") &&
-                  (order.status.toLowerCase() === "pending" ||
-                    order.status === "processing") && (
-                    <TouchableOpacity
-                      style={[
-                        styles.modalActionButton,
-                        styles.modalCancelButton,
-                      ]}
-                      onPress={() => setCancelModalVisible(true)}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="close-circle" size={20} color="#FFFFFF" />
-                      <Text style={styles.modalActionButtonText}>
-                        Cancel Order
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+              )}
 
-                {userRole === "vendor" &&
-                  order.status.toLowerCase() === "pending" && (
+              {normalizedOrder.order.note && (
+                <View style={styles.locationRow}>
+                  <Ionicons name="create-outline" size={18} color="#666666" />
+                  <Text style={styles.locationText}>
+                    {normalizedOrder.order.note}
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.expandedSummaryBox}>
+                <Text style={styles.expandedSummaryTitle}>Order status</Text>
+                <Text style={styles.expandedSummaryText}>
+                  {orderCapabilities.statusSummary}
+                </Text>
+              </View>
+
+              <View style={styles.progressSection}>
+                {orderCapabilities.progress.map((step, index) => {
+                  const isCurrent =
+                    index ===
+                    Math.min(orderCapabilities.progress.length - 1, 1);
+                  const isActive =
+                    (orderCapabilities.status === "pending" && index === 1) ||
+                    (orderCapabilities.status === "confirmed" && index === 2) ||
+                    (orderCapabilities.status === "assignable" &&
+                      index === 2) ||
+                    (orderCapabilities.status === "assigned" && index === 2) ||
+                    (orderCapabilities.status === "accepted" && index === 3) ||
+                    (orderCapabilities.status === "picked_up" && index === 3) ||
+                    (orderCapabilities.status === "delivered" && index >= 3);
+
+                  return (
+                    <View
+                      key={`${step}-${index}`}
+                      style={styles.progressStepRow}
+                    >
+                      <View
+                        style={[
+                          styles.progressDot,
+                          isCurrent || isActive
+                            ? styles.progressDotActive
+                            : styles.progressDotInactive,
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles.progressText,
+                          (isCurrent || isActive) && styles.progressTextActive,
+                        ]}
+                      >
+                        {step}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+
+              <View style={styles.expandActions}>
+                {orderCapabilities.actions.map((action) => {
+                  const isDanger = action.kind === "danger";
+                  const isPrimary = action.kind === "primary";
+                  const buttonIcon =
+                    action.id === "cancel"
+                      ? "close-circle"
+                      : action.id === "confirm"
+                        ? "checkmark-circle"
+                        : action.id === "claim" || action.id === "accept"
+                          ? "hand-left"
+                          : action.id === "reject"
+                            ? "remove-circle"
+                            : action.id === "pick_up" ||
+                                action.id === "vendor_pick_up"
+                              ? "bag-handle"
+                              : action.id === "deliver"
+                                ? "car"
+                                : "star";
+
+                  return (
                     <TouchableOpacity
+                      key={action.id}
                       style={[
                         styles.modalActionButton,
-                        styles.modalConfirmButton,
+                        isDanger
+                          ? styles.modalCancelButton
+                          : styles.modalConfirmButton,
                       ]}
-                      onPress={() => setModalVisible(true)}
+                      onPress={() => handleActionPress(action.id)}
                       activeOpacity={0.7}
                     >
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={20}
-                        color="#FFFFFF"
-                      />
-                      <Text style={styles.modalActionButtonText}>
-                        Confirm Order
-                      </Text>
+                      {loading.others === action.id ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <>
+                          <Ionicons
+                            name={buttonIcon}
+                            size={20}
+                            color="#FFFFFF"
+                          />
+                          <Text style={styles.modalActionButtonText}>
+                            {action.label}
+                          </Text>
+                        </>
+                      )}
                     </TouchableOpacity>
-                  )}
+                  );
+                })}
               </View>
             </View>
           </Animated.View>
@@ -543,6 +837,114 @@ const OrderItemCard = ({
                     </>
                   )}
                 </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Assignment Modal (prompt after confirm) */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={assignModalVisible}
+        onRequestClose={closeAssignModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: "70%" }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Assign Delivery Guy?</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setAssignModalVisible(false)}
+              >
+                <Ionicons name="close" size={24} color="#334155" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.confirmSubtitle}>
+                Would you like to assign a specific delivery partner, or leave
+                this order open for available drivers to claim?
+              </Text>
+
+              <View style={{ marginTop: spacing.md }}>
+                <TouchableOpacity
+                  style={[styles.optionRow, { marginBottom: spacing.sm }]}
+                  onPress={() => {
+                    setSelectedDriver(null);
+                  }}
+                >
+                  <View style={styles.optionLeft}>
+                    <Text style={styles.optionTitle}>
+                      Leave open for drivers to claim
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                <Text
+                  style={[styles.confirmFormLabel, { marginTop: spacing.sm }]}
+                >
+                  Or assign a delivery guy
+                </Text>
+                {drivers.length === 0 && (
+                  <Text style={[styles.errorText, { marginTop: spacing.sm }]}>
+                    No delivery guys found.
+                  </Text>
+                )}
+                {drivers.map((d) => (
+                  <TouchableOpacity
+                    key={d.id || d._id}
+                    style={[
+                      styles.driverRow,
+                      selectedDriver &&
+                        (selectedDriver.id || selectedDriver._id) ===
+                          (d.id || d._id) &&
+                        styles.driverSelected,
+                    ]}
+                    onPress={() => setSelectedDriver(d)}
+                  >
+                    <Text style={styles.driverName}>
+                      {d.username || d.name || d.displayName}
+                    </Text>
+                    <Text style={styles.driverMeta}>
+                      {d.vehicle || d.phone || ""}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.modalActionButton,
+                      styles.modalSecondaryButton,
+                    ]}
+                    onPress={closeAssignModal}
+                  >
+                    <Text style={styles.modalSecondaryButtonText}>Close</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.modalActionButton,
+                      styles.modalConfirmButton,
+                    ]}
+                    onPress={selectedDriver ? assignToDriver : leaveOpen}
+                    disabled={assigning}
+                  >
+                    {assigning ? (
+                      <>
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                        <Text style={styles.modalActionButtonText}>
+                          Assigning...
+                        </Text>
+                      </>
+                    ) : (
+                      <Text style={styles.modalActionButtonText}>
+                        {selectedDriver ? "Assign Selected" : "Leave Open"}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             </ScrollView>
           </View>
@@ -722,6 +1124,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#334155",
   },
+  orderName: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1f2937",
+    marginTop: 2,
+  },
   orderTime: {
     fontSize: 12,
     color: "#999999",
@@ -796,6 +1204,74 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: colors.lime,
   },
+  expandedSummaryBox: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  expandedSummaryTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  },
+  expandedSummaryText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#334155",
+    lineHeight: 18,
+  },
+  progressSection: {
+    marginBottom: 12,
+  },
+  progressStepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  progressDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  progressDotActive: {
+    backgroundColor: colors.lime,
+  },
+  progressDotInactive: {
+    backgroundColor: "#dfe7ee",
+  },
+  progressText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#64748b",
+  },
+  progressTextActive: {
+    color: "#1f2937",
+    fontWeight: "600",
+  },
+  expandActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+  },
+  locationText: {
+    fontSize: 12,
+    color: "#475569",
+    flex: 1,
+  },
   // Swipe Actions
   swipeActions: {
     flexDirection: "row",
@@ -853,6 +1329,44 @@ const styles = StyleSheet.create({
   },
   modalCloseButton: {
     padding: 4,
+  },
+  optionRow: {
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
+  },
+  optionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  optionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#334155",
+  },
+  driverRow: {
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
+    marginTop: 8,
+  },
+  driverSelected: {
+    borderColor: colors.lime,
+    backgroundColor: "#fefce8",
+  },
+  driverName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#334155",
+  },
+  driverMeta: {
+    fontSize: 12,
+    color: "#666666",
+    marginTop: 4,
   },
   // Cancel Modal Styles
   cancelIconContainer: {

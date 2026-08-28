@@ -56,17 +56,13 @@ export async function requestWebNotificationPermission() {
 
     // Retrieve FCM Registration Token using your VAPID Key from Firebase Console
     const token = await getToken(messagingInstance, {
-      vapidKey: "YOUR_VAPID_KEY_FROM_FIREBASE_CONSOLE",
+      vapidKey: "BB0LneDdPje5a_WvNBjk5P3euSgN62U3E7yvbtmirEKR8pp6BBjb71-FTQjQm3s1ybrY2JkcG6cNEi8yahwpbh0",
       serviceWorkerRegistration: registration,
     });
 
     if (token) {
-      console.log("FCM Web Push Token generated:", token);
       return token;
     } else {
-      console.log(
-        "No registration token available. Request permission to generate one.",
-      );
       return null;
     }
   } catch (error) {

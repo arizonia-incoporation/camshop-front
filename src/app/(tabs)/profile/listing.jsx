@@ -52,6 +52,18 @@ const ListingScreen = () => {
     loadItems();
   }, [type, userId]);
 
+  const orderStatus = [
+    { id: "all", label: "All" },
+    { id: "PENDING", label: "Pending" },
+    { id: "CONFIRMED", label: "Confirmed" },
+    { id: "ASSIGNED", label: "Assigned" },
+    { id: "ASSIGNABLE", label: "Assignable" },
+    { id: "ACCEPTED", label: "Accepted" },
+    { id: "PICKED_UP", label: "Shipped" },
+    { id: "DELIVERED", label: "Delivered" },
+    { id: "CANCELLED", label: "Cancelled" },
+  ];
+
   const loadItems = async () => {
     setLoading(true);
     try {
@@ -86,10 +98,9 @@ const ListingScreen = () => {
     }
   };
 
-  // Mock API functions
-  const fetchOrders = async (role, status) => {
+  const fetchOrders = async (role, status, currentPage=0) => {
     try {
-      const nextPage = page + 1;
+      const nextPage = currentPage + 1;
       // GET /orders?status=DELIVERED&page=1&limit=20
       const res = await AppCalls.get(
         "/order?role=" +
@@ -100,7 +111,6 @@ const ListingScreen = () => {
           "&status=" +
           status,
       );
-      console.log("-----------------------------------",res.data)
       setHasMore(res.data.pagination?.hasNextPage || false);
       setPage(res.data.pagination?.page || 1);
       return res.data.items;
@@ -110,11 +120,11 @@ const ListingScreen = () => {
   };
 
   const sortOrders = async (term) => {
+    setCurrentTab(term)
     setLoading(true);
       setPage(0);
     try {
       const data = await fetchOrders(userRole, term === "all" ? "" : term.toUpperCase());
-      console.log("*********************************************",data)
       setItems(data);
       setFilteredItems(data);
     } catch (error) {
@@ -152,7 +162,6 @@ const ListingScreen = () => {
       // Get /vendors/:vendorId/products?page=1&limit=20
       const url = `/favorite?page=${page}`;
       const res = await AppCalls.get(url);
-      console.log(res.data.items);
       setHasMore(res.data.pagination?.hasNextPage || false);
       setPage(res.data.pagination?.page || 1);
       return res.data.items;
@@ -213,6 +222,8 @@ const ListingScreen = () => {
       userRole={userRole.toLowerCase()}
       onCancelOrder={handleCancelOrder}
       onConfirmOrder={handleConfirmOrder}
+      transporterId={user?.transporter?.id}
+      onViewDetails={loadItems}
     />
   );
 
@@ -471,36 +482,41 @@ const ListingScreen = () => {
               : "items"}
         </Text>
         {type === "orders" && (
-          <View style={styles.filterChips}>
-            <TouchableOpacity
-              style={[styles.chip, styles.chipActive]}
-              onPress={() => sortOrders("all")}
-            >
-              <Text style={[styles.chipText, styles.chipTextActive]}>All</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.chip}
-              onPress={() => sortOrders("pending")}
-            >
-              <Text style={styles.chipText}>Pending</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.chip}
-              onPress={() => sortOrders("confirmed")}
-            >
-              <Text style={styles.chipText}>Confirmed</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.chip}
-              onPress={() => sortOrders("cancelled")}
-            >
-              <Text style={styles.chipText}>Cancelled</Text>
-            </TouchableOpacity>
-          </View>
+          <ScrollView
+            horizontal={true}
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterChips}
+          >
+            {orderStatus.map((item) =>
+              user.role === "TRANSPORTER" &&
+              ["PENDING", "CONFIRMED", "CANCELLED"].some(
+                (it) => item.id === it,
+              ) ? (
+                ""
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    styles.chip,
+                    currentTab === item.id && styles.chipActive,
+                  ]}
+                  onPress={() => sortOrders(item.id)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      currentTab === item.id && styles.chipTextActive,
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              ),
+            )}
+          </ScrollView>
         )}
       </View>
 
-      {type === "chapchap" && (<ChapChapScreen type={type} />)}
+      {type === "chapchap" && <ChapChapScreen type={type} />}
 
       {/* Content */}
       {type !== "chapchap" && loading && (
@@ -605,11 +621,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
+    gap: 6,
   },
   statsText: {
     fontSize: 14,
     color: "#666666",
     fontWeight: "500",
+    width: "30%"
   },
   filterChips: {
     flexDirection: "row",
