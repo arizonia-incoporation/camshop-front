@@ -61,10 +61,10 @@ const SellerRegistrationScreen = () => {
     },
   });
 
-  
   const requestPermissions = async (type) => {
     if (type === "image") {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
           "Permission Denied",
@@ -74,7 +74,8 @@ const SellerRegistrationScreen = () => {
       }
       return true;
     } else {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
           "Permission Denied",
@@ -91,19 +92,28 @@ const SellerRegistrationScreen = () => {
     const hasPermission = await requestPermissions("image");
     if (!hasPermission) return;
 
+    try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         base64: true,
       });
 
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        const formattedDataUri = `data:${asset.mimeType};base64,${asset.base64}`;
+      // Support for both Expo SDK 48+ and older versions
+      if (!result.canceled && !result.cancelled) {
+        const asset = result.assets ? result.assets[0] : result;
+        const mimeType = asset.mimeType || "image/jpeg";
+        const formattedDataUri = `data:${mimeType};base64,${asset.base64}`;
+
         setImage({
           uri: asset.uri,
           string: formattedDataUri,
         });
+        setImageError("");
       }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.");
+    }
   };
 
   // Take photo with camera
@@ -126,13 +136,15 @@ const SellerRegistrationScreen = () => {
         base64: true,
       });
 
-      if (!result.canceled) {
-      const asset = result.assets[0];
-      const formattedDataUri = `data:${asset.mimeType};base64,${asset.base64}`;
-      setImage({
-        uri: asset.uri,
-        string: formattedDataUri,
-      });
+      if (!result.canceled && !result.cancelled) {
+        const asset = result.assets ? result.assets[0] : result;
+        const mimeType = asset.mimeType || "image/jpeg";
+        const formattedDataUri = `data:${mimeType};base64,${asset.base64}`;
+
+        setImage({
+          uri: asset.uri,
+          string: formattedDataUri,
+        });
         setImageError("");
       }
     } catch (error) {
@@ -143,6 +155,12 @@ const SellerRegistrationScreen = () => {
 
   // Show image picker options
   const showImagePickerOptions = () => {
+    // Web doesn't support Alert with custom buttons
+    if (Platform.OS === "web") {
+      pickImage();
+      return;
+    }
+
     Alert.alert(
       "Upload Image",
       "Choose an option to upload your business image",
@@ -157,6 +175,7 @@ const SellerRegistrationScreen = () => {
 
   // Remove image
   const removeImage = () => {
+    setImage(null);
     setMediaUri(null);
     setFile(null);
     setMediaType(null);
@@ -164,6 +183,12 @@ const SellerRegistrationScreen = () => {
   };
 
   const onSubmit = async (data) => {
+    // Prevent submission if image is not selected
+    if (!image) {
+      setImageError("Please upload a business image");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await AppCalls.post(
@@ -178,11 +203,11 @@ const SellerRegistrationScreen = () => {
         "Registration Successful",
         "Your vendor account is now active, start adding products.",
       );
-      console.log(res)
+      console.log(res);
       checkAuth();
       navigation.replace("home/vendorDetails?vendorId=" + res.data.id);
     } catch (error) {
-      console.log(error)
+      console.log(error);
       showToast(
         "error",
         "Registration Failed",
@@ -191,7 +216,7 @@ const SellerRegistrationScreen = () => {
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -213,6 +238,7 @@ const SellerRegistrationScreen = () => {
         style={styles.container}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
+        keyboardShouldPersistTaps="handled" // Ensures tap registers even if keyboard is open
       >
         {/* Image Upload Section */}
         <View style={styles.imageSection}>
@@ -271,41 +297,6 @@ const SellerRegistrationScreen = () => {
             placeholder="Enter your phone number"
             keyboardType="phone-pad"
           />
-
-          {/* <View style={styles.inputGroup}>
-            <Text style={styles.label}>Business Type</Text>
-            <View style={styles.businessTypesGrid}>
-              {businessTypes.map((type) => (
-                <TouchableOpacity
-                  key={type.id}
-                  style={[
-                    styles.businessTypeCard,
-                    selectedBusinessType === type.id &&
-                      styles.businessTypeCardSelected,
-                  ]}
-                  onPress={() => {
-                    setSelectedBusinessType(type.id);
-                    setValue("businessType", type.id);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.businessTypeText,
-                      selectedBusinessType === type.id &&
-                        styles.businessTypeTextSelected,
-                    ]}
-                  >
-                    {type.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            {errors.businessType && (
-              <Text style={styles.errorText}>
-                {errors.businessType.message}
-              </Text>
-            )}
-          </View> */}
 
           <InputField
             label="Address"
@@ -474,13 +465,13 @@ const styles = StyleSheet.create({
     color: "#999999",
     marginTop: 4,
   },
-  formSection: {
+  formContainer: {
     gap: 16,
   },
   textAreaContainer: {
     marginBottom: 4,
   },
-  inputLabel: {
+  label: {
     fontSize: 14,
     fontWeight: "500",
     color: "#334155",

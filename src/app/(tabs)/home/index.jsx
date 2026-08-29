@@ -105,8 +105,7 @@ const HomeScreen = () => {
     // Set delivery time
     setDeliveryTime(getDeliveryTime());
 
-    loadData()
-
+    loadData();
   }, []);
 
   const loadData = async () => {
@@ -121,15 +120,15 @@ const HomeScreen = () => {
       setVendors(vendors.items);
       setCategories(categories.items);
       setServices(services);
-      setAds(ads)
+      setAds(ads);
       setLoadError(false);
     } catch (error) {
-      console.error(error)
-      setLoadError(error.message||"Failed to load home")
+      console.error(error);
+      setLoadError(error.message || "Failed to load home");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -175,9 +174,11 @@ const HomeScreen = () => {
               size={24}
               color={colors.lime}
             />
-            <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>{unreadCount}</Text>
-            </View>
+            {unreadCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -193,19 +194,19 @@ const HomeScreen = () => {
     <View style={styles.statsSection}>
       <View style={styles.statsCard}>
         <Ionicons name="bag-handle" size={20} color={colors.lime} />
-        <Text style={styles.statsValue}>{user?.order?.count}</Text>
+        <Text style={styles.statsValue}>{user?.order?.count || 0}</Text>
         <Text style={styles.statsLabel}>Orders</Text>
       </View>
       <View style={styles.statsDivider} />
       <View style={styles.statsCard}>
         <Ionicons name="bookmark" size={20} color="#0ea5e9" />
-        <Text style={styles.statsValue}>{user?._count?.favorites}</Text>
+        <Text style={styles.statsValue}>{user?._count?.favorites || 0}</Text>
         <Text style={styles.statsLabel}>Favourites</Text>
       </View>
       <View style={styles.statsDivider} />
       <View style={styles.statsCard}>
         <Ionicons name="time" size={20} color="#22c55e" />
-        <Text style={styles.statsValue}>{user?.order?.pending}</Text>
+        <Text style={styles.statsValue}>{user?.order?.pending || 0}</Text>
         <Text style={styles.statsLabel}>Pending</Text>
       </View>
     </View>
@@ -463,18 +464,18 @@ const HomeScreen = () => {
       </View>
     </View>
   );
-  
-    if (loadError) {
-      return (
-        <SafeAreaView style={[styles.container, styles.center]}>
-          <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
-          <Text style={styles.errorText}>Failed to load.</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadData}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </SafeAreaView>
-      );
-    }
+
+  if (loadError) {
+    return (
+      <SafeAreaView style={[styles.container, styles.center]}>
+        <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
+        <Text style={styles.errorText}>Failed to load.</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={loadData}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -502,9 +503,11 @@ const HomeScreen = () => {
                 size={22}
                 color="#FFFFFF"
               />
-              <View style={styles.headerBadge}>
-                <Text style={styles.headerBadgeText}>{unreadCount}</Text>
-              </View>
+              {unreadCount > 0 && (
+                <View style={styles.headerBadge}>
+                  <Text style={styles.badgeText}>{unreadCount}</Text>
+                </View>
+              )}
             </TouchableOpacity>
             {/* <TouchableOpacity
               style={styles.headerIconButton}

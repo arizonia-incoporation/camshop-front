@@ -533,7 +533,8 @@ const DashboardScreen = () => {
               <View style={[styles.statIcon, { backgroundColor: "#dcfce7" }]}>
                 <Ionicons name="cash" size={24} color="#22c55e" />
               </View>
-              <Text style={styles.statValue}>{formatPrice(stats.revenue)}</Text>
+              <Text style={styles.statValue}>Unknown</Text>
+              {/* <Text style={styles.statValue}>{formatPrice(stats.revenue)}</Text> */}
               <Text style={styles.statLabel}>Revenue</Text>
             </View>
             <View style={styles.statCard}>
