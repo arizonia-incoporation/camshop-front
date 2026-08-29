@@ -39,6 +39,7 @@ export default function SignupScreen() {
     const updatedData = { ...userData, ...data };
     setUserData(updatedData);
 
+
     // Skip the Hostel step if the user is not a student
     if (currentStep === 2 && updatedData.isStudent === false) {
       setCurrentStep(4);
@@ -61,10 +62,10 @@ export default function SignupScreen() {
   const handleRegister = async (finalData) => {
     setIsLoading(true);
     try {
-      const response = await AppCalls.post(
-        "/auth/register",
-        finalData || userData,
-      );
+      const response = await AppCalls.post("/auth/register", {
+        ...userData,
+        ...finalData,
+      });
       storeUser(response.token, response.user);
       showToast(
         "success",

@@ -34,12 +34,13 @@ const campusSchema = z
   });
 
 const campuses = [
-  { id: "palisa", name: "Palisa" },
-  { id: "main", name: "Main" },
-  { id: "nangongera", name: "Nangongera" },
-  { id: "arapai", name: "Arapai" },
-  { id: "namasagali", name: "Namasagali" },
-  { id: "mbale", name: "Mbale" },
+  { id: "PALLISA", name: "Pallisa" },
+  { id: "MAIN", name: "Main" },
+  { id: "NAGONGERA", name: "Nangongera" },
+  { id: "ARAPAI", name: "Arapai" },
+  { id: "KABWANGASI", name: "KABWANGASI" },
+  { id: "NAMASAGALI", name: "Namasagali" },
+  { id: "MBALE", name: "Mbale" },
 ];
 
 const CampusStep = ({ data, onNext, onBack }) => {
