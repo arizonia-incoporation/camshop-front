@@ -34,7 +34,6 @@ const VendorProfileScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState("Low-High");
   const [loadingMore, setLoadingMore] = useState(false);
-  const [addingCart, setAddingCart] = useState(false);
 
   useEffect(() => {
     loadVendorProfile();
@@ -68,17 +67,6 @@ const VendorProfileScreen = () => {
     Alert.alert("Message", `Start a conversation with ${vendor.shopName}`);
   };
 
-  const handleAddToCart = async (id) => {
-    setAddingCart(true);
-    try {
-      await addToCart(id);
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setAddingCart(false);
-    }
-  };
-
   const handleLoadMore = () => {
     setLoadingMore(true);
     // Simulate loading more products
@@ -92,60 +80,121 @@ const VendorProfileScreen = () => {
     return `UGX ${price.toLocaleString()}`;
   };
 
-  const renderTopProduct = ({ item }) => (
-    <TouchableOpacity
-      onPress={() => navigation.push("home/productDetails?productId=" + item?.id)}
-      style={styles.topProductCard}
-    >
-      <View style={styles.topProductImageContainer}>
-        <Image source={{ uri: item?.image }} style={styles.topProductImage} />
-      </View>
-      <View style={styles.topProductInfo}>
-        <Text style={styles.topProductName}>{item?.name}</Text>
-        <Text style={styles.topProductPrice}>{formatPrice(item?.price)}</Text>
-        <Text style={styles.topProductDescription} numberOfLines={2}>
-          {item.description}
-        </Text>
-      </View>
-      <TouchableOpacity
-        style={styles.addToCartButton}
-        onPress={() => handleAddToCart(item?.id)}
-      >
-        <Text style={styles.addToCartText}>Add to Cart</Text>
+  // Top Product Card Component
+  const TopProductItem = ({ item, formatPrice, onCardPress, addToCart }) => {
+    const [isAdding, setIsAdding] = useState(false);
+
+    const handleAdd = async () => {
+      setIsAdding(true);
+      try {
+        await addToCart(item.id,vendor.id);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setIsAdding(false);
+      }
+    };
+
+    return (
+      <TouchableOpacity onPress={onCardPress} style={styles.topProductCard}>
+        <View style={styles.topProductImageContainer}>
+          <Image source={{ uri: item?.image }} style={styles.topProductImage} />
+        </View>
+        <View style={styles.topProductInfo}>
+          <Text style={styles.topProductName}>{item?.name}</Text>
+          <Text style={styles.topProductPrice}>{formatPrice(item?.price)}</Text>
+          <Text style={styles.topProductDescription} numberOfLines={2}>
+            {item.description}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.addToCartButton}
+          onPress={handleAdd}
+          disabled={isAdding}
+        >
+          <Text style={styles.addToCartText}>
+            {isAdding ? "Adding..." : "Add to Cart"}
+          </Text>
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
+    );
+  };
+
+  // Standard Product Card Component
+  const ProductItem = ({
+    item,
+    vendor,
+    user,
+    formatPrice,
+    onCardPress,
+    onEdit,
+    addToCart,
+  }) => {
+    const [isAdding, setIsAdding] = useState(false);
+    const isVendorOwner = user?.vendor?.id === vendor.id;
+
+    const handleAdd = async () => {
+      if (isVendorOwner) {
+        onEdit();
+        return;
+      }
+
+      setIsAdding(true);
+      try {
+        await addToCart(item.id,vendor.id);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setIsAdding(false);
+      }
+    };
+
+    return (
+      <TouchableOpacity onPress={onCardPress} style={styles.productItem}>
+        <Image source={{ uri: item.image }} style={styles.productImage} />
+        <View style={styles.productInfo}>
+          <Text style={styles.productName}>{item.name}</Text>
+          <Text style={styles.productCategory}>Category: {item.category}</Text>
+          <Text style={styles.productPrice}>{formatPrice(item.price)}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.addToCartButton}
+          onPress={handleAdd}
+          disabled={isAdding && !isVendorOwner}
+        >
+          <Text style={styles.addToCartText}>
+            {isVendorOwner ? "Edit" : isAdding ? "Adding Cart" : "Add to Cart"}
+          </Text>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    );
+  };
+
+
+  // Update render methods inside VendorProfileScreen:
+  const renderTopProduct = ({ item }) => (
+    <TopProductItem
+      item={item}
+      formatPrice={formatPrice}
+      addToCart={addToCart}
+      onCardPress={() =>
+        navigation.push("home/productDetails?productId=" + item?.id)
+      }
+    />
   );
 
   const renderAllProduct = ({ item }) => (
-    <TouchableOpacity
-      onPress={() =>
+    <ProductItem
+      item={item}
+      vendor={vendor}
+      user={user}
+      formatPrice={formatPrice}
+      addToCart={addToCart}
+      onCardPress={() =>
         navigation.push("home/productDetails?productId=" + item?.id)
       }
-      style={styles.productItem}
-    >
-      <Image source={{ uri: item.image }} style={styles.productImage} />
-      <View style={styles.productInfo}>
-        <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.productCategory}>Category: {item.category}</Text>
-        <Text style={styles.productPrice}>{formatPrice(item.price)}</Text>
-      </View>
-      <TouchableOpacity
-        style={styles.addToCartButton}
-        onPress={() =>
-          user?.vendor?.id === vendor.id
-            ? navigation.push()
-            : handleAddToCart(item?.id)
-        }
-      >
-        {user?.vendor?.id === vendor.id ? (
-          <Text style={styles.addToCartText}>Edit</Text>
-        ) : addingCart ? (
-          <Text style={styles.addToCartText}>Adding Cart</Text>
-        ) : (
-          <Text style={styles.addToCartText}>Add to Cart</Text>
-        )}
-      </TouchableOpacity>
-    </TouchableOpacity>
+      onEdit={() => navigation.push()} // Add your edit route here
+    />
   );
 
   if (loading) {
@@ -247,7 +296,7 @@ const VendorProfileScreen = () => {
         </View>
 
         {/* Action Buttons */}
-        <View style={styles.actionButtons}>
+        {/* <View style={styles.actionButtons}>
           <TouchableOpacity
             style={[styles.actionButton, styles.messageButton]}
             onPress={handleMessage}
@@ -280,7 +329,7 @@ const VendorProfileScreen = () => {
             </Text>
             <View style={styles.actionBadge}></View>
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         {/* Top Products Section */}
         {vendor?.products?.length > 0 && (
@@ -345,7 +394,7 @@ const VendorProfileScreen = () => {
       </ScrollView>
     </SafeAreaView>
   );
-};
+};;;
 
 const styles = StyleSheet.create({
   safeArea: {

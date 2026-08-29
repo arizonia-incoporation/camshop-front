@@ -82,24 +82,30 @@ const DashboardScreen = () => {
   const loadOrders = async (role) => {
     try {
       const res = await AppCalls.get("/order?role=" + role);
-      const result = res.data.items;
+
+      // Because AppCalls already returns the data payload, we access it directly.
+      // Optional chaining (?.) prevents crashes if the API returns an unexpected shape.
+      const result = res?.items || res?.data?.items || [];
       const pendingOrders = result.filter(
         (item) => item.status === "PENDING",
       ).length;
+
       const statis = {
-        orders: res.data.pagination.totalItems,
+        orders:
+          res?.pagination?.totalItems || res?.data?.pagination?.totalItems || 0,
         revenue: 3420000,
         pendingOrders: pendingOrders,
       };
-      const recentOrders = result ? result.splice(0, 5) : [];
-      setData({
-        ...data,
+
+      const recentOrders = result.length ? result.splice(0, 5) : [];
+
+      setData((prev) => ({
+        ...prev,
         recentOrders,
         stats: statis,
-      });
+      }));
     } catch (error) {
-      console.log("geeeeeee", error)
-      throw new Error("Failed to load orders.");
+      console.log("Error loading orders:", error);
     } finally {
       setLoading(false);
     }
@@ -107,20 +113,28 @@ const DashboardScreen = () => {
 
   const loadProducts = async (role) => {
     try {
+      // Added optional chaining to user?.vendor?.id to prevent crashes if vendor object is missing
       const url =
         role.toLocaleLowerCase() === "vendor"
-          ? "/vendors/" + user.vendor.id
+          ? "/vendors/" + user?.vendor?.id
           : "/products";
+
       const res = await AppCalls.get(url);
-      const result = res.data.products;
-      const products = result ? result.splice(0, 5) : [];
+
+      const result = res?.products || res?.data?.products || [];
+      const products = result.length ? result.splice(0, 5) : [];
+
       setData((c) => ({
         ...c,
         products,
-        stats: { ...c.stats, products: res.data._count.products },
+        stats: {
+          ...c.stats,
+          // Safely target the count object without crashing
+          products: res?._count?.products || res?.data?._count?.products || 0,
+        },
       }));
     } catch (error) {
-      throw new Error("Failed to load orders.");
+      console.log("Error loading products:", error);
     } finally {
       setLoadingProducts(false);
     }
@@ -136,8 +150,7 @@ const DashboardScreen = () => {
   };
 
   const getInitials = (name) => {
-    return name
-      .split(" ")
+    return name?.split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase();
@@ -180,25 +193,25 @@ const DashboardScreen = () => {
           <View style={styles.profileContent}>
             <View style={styles.profileLeft}>
               <View style={styles.avatarContainer}>
-                {user.profilepicture ? (
+                {user?.profilepicture ? (
                   <Image
-                    source={{ uri: user.profilepicture }}
+                    source={{ uri: user?.profilepicture }}
                     style={styles.avatar}
                   />
                 ) : (
                   <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarText}>
-                      {getInitials(user.username)}
+                      {getInitials(user?.username)}
                     </Text>
                   </View>
                 )}
               </View>
               <View style={styles.profileInfo}>
-                <Text style={styles.userName}>{user.username}</Text>
-                <Text style={styles.userEmail}>{user.email}</Text>
+                <Text style={styles.userName}>{user?.username}</Text>
+                <Text style={styles.userEmail}>{user?.email}</Text>
                 <Text style={styles.userMeta}>
-                  Member since {new Date(user.createdAt).getMonth()}{" "}
-                  {new Date(user.createdAt).getFullYear()}
+                  Member since {new Date(user?.createdAt).getMonth()}{" "}
+                  {new Date(user?.createdAt).getFullYear()}
                 </Text>
               </View>
             </View>
@@ -332,7 +345,7 @@ const DashboardScreen = () => {
                     { backgroundColor: "#fef3c7" },
                   ]}
                 >
-                  <Ionicons name="person" size={24} color="#ef4444" />
+                  <Ionicons name="flash" size={24} color="#ef4444" />
                 </View>
                 <Text style={styles.quickActionLabel}>ChapChap</Text>
               </TouchableOpacity>
@@ -470,18 +483,18 @@ const DashboardScreen = () => {
                 ) : (
                   <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarText}>
-                      {getInitials(user.username)}
+                      {getInitials(user?.username)}
                     </Text>
                   </View>
                 )}
               </View>
               <View style={styles.profileInfo}>
-                <Text style={styles.userName}>{user.username}</Text>
-                <Text style={styles.userEmail}>{user.vendor.name}</Text>
+                <Text style={styles.userName}>{user?.username}</Text>
+                <Text style={styles.userEmail}>{user?.vendor.name}</Text>
                 <View style={styles.vendorRating}>
                   <Ionicons name="star" size={16} color="#FFFFFF" />
                   <Text style={styles.userMeta}>
-                    {user?.rating} ({user.reviews} reviews)
+                    {user?.rating} ({user?.reviews} reviews)
                   </Text>
                 </View>
               </View>
@@ -757,22 +770,22 @@ const DashboardScreen = () => {
           <View style={styles.profileContent}>
             <View style={styles.profileLeft}>
               <View style={styles.avatarContainer}>
-                {user.profilepicture ? (
+                {user?.profilepicture ? (
                   <Image
-                    source={{ uri: user.profilepicture }}
+                    source={{ uri: user?.profilepicture }}
                     style={styles.avatar}
                   />
                 ) : (
                   <View style={styles.avatarPlaceholder}>
                     <Text style={styles.avatarText}>
-                      {getInitials(user.username)}
+                      {getInitials(user?.username)}
                     </Text>
                   </View>
                 )}
               </View>
               <View style={styles.profileInfo}>
-                <Text style={styles.userName}>{user.username}</Text>
-                <Text style={styles.userEmail}>{user.email}</Text>
+                <Text style={styles.userName}>{user?.username}</Text>
+                <Text style={styles.userEmail}>{user?.email}</Text>
                 <Text style={styles.userMeta}>
                   Delivery Partner • Member since{" "}
                   {new Date(user.createdAt).getFullYear()}
