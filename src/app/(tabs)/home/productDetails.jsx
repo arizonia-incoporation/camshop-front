@@ -33,6 +33,8 @@ const ProductDetailsScreen = () => {
   const [product, setProduct] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const flatListRef = useRef(null);
+  const [sliderWidth, setSliderWidth] = useState(0);
+  const slideHeight = Math.min(sliderWidth * 0.8, 450);
 
   useEffect(() => {
     loadProductDetails();
@@ -145,27 +147,43 @@ const ProductDetailsScreen = () => {
         contentContainerStyle={styles.contentContainer}
       >
         {/* Image Slider Section */}
-        <View style={styles.imageSection}>
-          {/* Main Image Slider */}
-          <FlatList
-            ref={flatListRef}
-            data={product.images}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={onScroll}
-            scrollEventThrottle={16}
-            keyExtractor={(item, index) => `image-${index}`}
-            renderItem={({ item }) => (
-              <View style={styles.imageSlide}>
-                <Image
-                  source={{ uri: item }}
-                  style={styles.mainImage}
-                  resizeMode="cover"
-                />
-              </View>
-            )}
-          />
+        <View
+          style={styles.imageSection}
+          onLayout={(event) => {
+            // Captures the exact width of this container, respecting any maxWidth
+            setSliderWidth(event.nativeEvent.layout.width);
+          }}
+        >
+          {/* Only render the slider once we have the container width */}
+          {sliderWidth > 0 && (
+            <FlatList
+              ref={flatListRef}
+              data={product.images}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={onScroll}
+              scrollEventThrottle={16}
+              keyExtractor={(item, index) => `image-${index}`}
+              renderItem={({ item }) => (
+                // Apply the dynamic width directly to the slide { width: sliderWidth, height: slideHeight }
+                <View
+                  style={[
+                    styles.imageSlide,
+                    { width: sliderWidth, height: slideHeight },
+                  ]}
+                >
+                  <View style={styles.imageBorderContainer}>
+                    <Image
+                      source={{ uri: item }}
+                      style={styles.mainImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                </View>
+              )}
+            />
+          )}
 
           {/* Image Indicator Dots */}
           <View style={styles.dotsContainer}>
@@ -319,7 +337,7 @@ const ProductDetailsScreen = () => {
               { marginLeft: 8 },
             ]}
             onPress={() => addTofavorite(product.id)}
-            >
+          >
             <Ionicons name="heart-outline" size={22} color={colors.white} />
           </TouchableOpacity>
           <TouchableOpacity
@@ -403,15 +421,25 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
   },
   imageSlide: {
-    width: width,
-    height: 500,
+    // Width and height are now entirely handled by inline styles
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 16, // Adjusted slightly to ensure border fits well
+    paddingVertical: 10,
+  },
+  imageBorderContainer: {
+    width: "100%",
+    height: "100%",
+    borderWidth: 2,
+    borderColor: "#F97316",
+    borderRadius: 12,
+    padding: 8,
+    backgroundColor: "#ffffff",
   },
   mainImage: {
     width: "100%",
     height: "100%",
-    objectFit: "contain",
+    borderRadius: 8,
   },
   dotsContainer: {
     flexDirection: "row",

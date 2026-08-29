@@ -1,5 +1,5 @@
 // components/HostelStep.js
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   FlatList,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { colors } from "../../theme/theme";
@@ -19,7 +19,7 @@ const hostelSchema = z.object({
 });
 
 const popularHostels = [
-  {id: "ogoola",name: "Ogoola Hall", location: "University Hall"},
+  { id: "ogoola", name: "Ogoola Hall", location: "University Hall" },
   { id: "nyerere", name: "Julius Nyerere", location: "University Hall" },
   { id: "Njuki", name: "Njuki", location: "University Hall" },
   { id: "AC", name: "AC", location: "University Hall" },
@@ -49,7 +49,6 @@ const HostelStep = ({ data, onNext, onBack }) => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const {
-    control,
     handleSubmit,
     setValue,
     watch,
@@ -63,13 +62,23 @@ const HostelStep = ({ data, onNext, onBack }) => {
 
   const selectedHostel = watch("hostel");
 
+  // Dynamically filter hostels based on the search query
+  const filteredHostels = useMemo(() => {
+    if (!searchQuery.trim()) return popularHostels;
+    return popularHostels.filter((hostel) =>
+      hostel.name.toLowerCase().includes(searchQuery.toLowerCase().trim()),
+    );
+  }, [searchQuery]);
+
   const onSubmit = (formData) => {
     onNext(formData);
   };
 
-  const handleSelect = (hostel) => {
-    setValue("hostel", hostel);
-    setSearchQuery(hostel);
+  const handleSelect = (hostelName) => {
+    setValue("hostel", hostelName);
+    setSearchQuery(hostelName);
+    // Auto-advance directly using the selected value
+    onNext({ hostel: hostelName });
   };
 
   const renderHostel = ({ item }) => (
@@ -90,12 +99,32 @@ const HostelStep = ({ data, onNext, onBack }) => {
     </TouchableOpacity>
   );
 
+  // Fallback component when a searched hostel isn't in the list
+  const renderEmptyList = () => {
+    if (!searchQuery.trim()) return null;
+    return (
+      <TouchableOpacity
+        style={styles.customHostelItem}
+        onPress={() => handleSelect(searchQuery.trim())}
+      >
+        <View style={styles.hostelInfo}>
+          <Text style={styles.customHostelTitle}>Can't find your hostel?</Text>
+          <Text style={styles.customHostelName}>
+            Tap to use "{searchQuery.trim()}"
+          </Text>
+        </View>
+        <MaterialIcons name="add-circle" size={24} color={colors.lime} />
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Where do you reside?</Text>
       <Text style={styles.subtitle}>
         Help us personalize your experience based on your campus location.
       </Text>
+
       <View style={styles.searchContainer}>
         <MaterialIcons
           name="search"
@@ -116,17 +145,24 @@ const HostelStep = ({ data, onNext, onBack }) => {
           </TouchableOpacity>
         )}
       </View>
-      <Text style={styles.sectionTitle}>Popular Hostels</Text>
+
+      <Text style={styles.sectionTitle}>
+        {searchQuery.length > 0 ? "Search Results" : "Popular Hostels"}
+      </Text>
+
       <FlatList
-        data={popularHostels}
+        data={filteredHostels}
         renderItem={renderHostel}
         keyExtractor={(item) => item.id}
         scrollEnabled={false}
         contentContainerStyle={styles.listContainer}
+        ListEmptyComponent={renderEmptyList} // Renders the custom option when filtered list is empty
       />
+
       {errors.hostel && (
         <Text style={styles.errorText}>{errors.hostel.message}</Text>
       )}
+
       <View style={styles.buttonContainer}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Text style={styles.backButtonText}>Back</Text>
@@ -203,6 +239,28 @@ const styles = StyleSheet.create({
     backgroundColor: "#F59E0B10",
     borderColor: colors.lime,
   },
+  customHostelItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: "#F0FDF4", // Light green background to indicate action
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: colors.lime,
+    borderStyle: "dashed", // Gives a visual cue that it's a custom entry
+  },
+  customHostelTitle: {
+    fontSize: 14,
+    color: "#64748B",
+    marginBottom: 2,
+  },
+  customHostelName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.lime,
+  },
   hostelInfo: {
     flex: 1,
   },
@@ -257,6 +315,5 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
-
 
 export default HostelStep;

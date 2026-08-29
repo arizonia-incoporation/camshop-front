@@ -5,7 +5,6 @@ import {
   StatusBar,
   StyleSheet,
   View,
-  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import WelcomeStep from "../../components/auth/WelcomeTab";
@@ -15,16 +14,17 @@ import HostelStep from "../../components/auth/HostelTab";
 import PersonalDetailsStep from "../../components/auth/PersonalDetailsTab";
 import PasswordStep from "../../components/auth/PasswordTab";
 import AppCalls from "../../utils/network";
-import { showToast } from '../../utils/toast';
+import { showToast } from "../../utils/toast";
 import { useAuth } from "../../context/AuthContext";
 
 export default function SignupScreen() {
-  const navigation = useRouter()
+  const navigation = useRouter();
   const { storeUser } = useAuth();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [isLoading, setLOading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Fixed typo from setLOading
   const [userData, setUserData] = useState({
+    isStudent: null, // Added to track student status globally
     campus: "",
     hostel: "",
     username: "",
@@ -36,37 +36,48 @@ export default function SignupScreen() {
   const totalSteps = 5;
 
   const handleNext = (data) => {
-    setUserData({ ...userData, ...data });
-    if (currentStep < totalSteps) {
+    const updatedData = { ...userData, ...data };
+    setUserData(updatedData);
+
+    // Skip the Hostel step if the user is not a student
+    if (currentStep === 2 && updatedData.isStudent === false) {
+      setCurrentStep(4);
+    } else if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     } else {
-      handleRegister()
+      handleRegister(updatedData);
     }
   };
 
   const handleBack = () => {
-    if (currentStep > 1) {
+    // Skip the Hostel step when going backward if the user is not a student
+    if (currentStep === 4 && userData.isStudent === false) {
+      setCurrentStep(2);
+    } else if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
   };
 
-  const handleRegister = async (data) => {
-    setLOading(true)
-    data = { ...userData, ...data }
+  const handleRegister = async (finalData) => {
+    setIsLoading(true);
     try {
       const response = await AppCalls.post(
         "/auth/register",
-        data
+        finalData || userData,
       );
       storeUser(response.token, response.user);
-      showToast("success", "Welcome " + response.user.username, response.message);
+      showToast(
+        "success",
+        "Welcome " + response.user.username,
+        response.message,
+      );
       navigation.push("/home");
     } catch (error) {
       showToast("error", "Sign up error ", error.message);
     } finally {
-      setLOading(false);
+      setIsLoading(false);
     }
-  }
+  };
 
   const renderStep = () => {
     switch (currentStep) {
@@ -74,19 +85,11 @@ export default function SignupScreen() {
         return <WelcomeStep onNext={() => setCurrentStep(2)} />;
       case 2:
         return (
-          <CampusStep
-            data={userData}
-            onNext={handleNext}
-            onBack={handleBack}
-          />
+          <CampusStep data={userData} onNext={handleNext} onBack={handleBack} />
         );
       case 3:
         return (
-          <HostelStep
-            data={userData}
-            onNext={handleNext}
-            onBack={handleBack} 
-          />
+          <HostelStep data={userData} onNext={handleNext} onBack={handleBack} />
         );
       case 4:
         return (
@@ -114,10 +117,7 @@ export default function SignupScreen() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.container}>
-        <StepIndicator
-          currentStep={currentStep}
-          totalSteps={totalSteps}
-        />
+        <StepIndicator currentStep={currentStep} totalSteps={totalSteps} />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
@@ -127,15 +127,13 @@ export default function SignupScreen() {
       </View>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   safeArea: {
-    // make it take the full height of the screen and center the content vertically
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-
     backgroundColor: "#FFFFFF",
   },
   container: {
@@ -143,7 +141,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 20,
     justifyContent: "center",
-    height: "", },
+    width: "100%", // Added to ensure it takes full width within safeArea constraints
+  },
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 30,

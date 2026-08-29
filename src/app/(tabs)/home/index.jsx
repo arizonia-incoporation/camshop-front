@@ -159,9 +159,7 @@ const HomeScreen = () => {
     <View style={styles.greetingSection}>
       <View style={styles.greetingContent}>
         <View>
-          <Text style={styles.greetingText}>
-            Hello, {user.username}!
-          </Text>
+          <Text style={styles.greetingText}>Hello, {user.username}!</Text>
           <Text style={styles.greetingSubtext}>{user.location}</Text>
         </View>
         <View style={styles.greetingActions}>
@@ -172,9 +170,13 @@ const HomeScreen = () => {
             style={styles.greetingIconButton}
             onPress={() => navigation.navigate("Notifications")}
           >
-            <Ionicons name="notifications-outline" size={24} color={colors.lime} />
+            <Ionicons
+              name="notifications-outline"
+              size={24}
+              color={colors.lime}
+            />
             <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>3</Text>
+              <Text style={styles.badgeText}>{unreadCount}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -1030,11 +1032,12 @@ const styles = StyleSheet.create({
   servicesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "space-between",
     gap: 12,
     marginTop: 4,
   },
   serviceCard: {
-    width: (width - 44) / 3.2,
+    width: "49%",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
     paddingVertical: 16,
