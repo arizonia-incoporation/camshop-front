@@ -82,23 +82,21 @@ const DashboardScreen = () => {
   const loadOrders = async (role) => {
     try {
       const res = await AppCalls.get("/order?role=" + role);
-
-      // Because AppCalls already returns the data payload, we access it directly.
-      // Optional chaining (?.) prevents crashes if the API returns an unexpected shape.
+      
+      // Safely unwrap regardless of API shape
       const result = res?.items || res?.data?.items || [];
       const pendingOrders = result.filter(
-        (item) => item.status === "PENDING",
+        (item) => item.status === "PENDING"
       ).length;
-
+      
       const statis = {
-        orders:
-          res?.pagination?.totalItems || res?.data?.pagination?.totalItems || 0,
+        orders: res?.pagination?.totalItems || res?.data?.pagination?.totalItems || 0,
         revenue: 3420000,
         pendingOrders: pendingOrders,
       };
-
-      const recentOrders = result.length ? result.splice(0, 5) : [];
-
+      
+      const recentOrders = result.length > 0 ? result.splice(0, 5) : [];
+      
       setData((prev) => ({
         ...prev,
         recentOrders,
@@ -113,24 +111,24 @@ const DashboardScreen = () => {
 
   const loadProducts = async (role) => {
     try {
-      // Added optional chaining to user?.vendor?.id to prevent crashes if vendor object is missing
+      // Safely check for vendor.id to prevent URL generation crashes
       const url =
         role.toLocaleLowerCase() === "vendor"
-          ? "/vendors/" + user?.vendor?.id
+          ? "/vendors/" + (user?.vendor?.id || "")
           : "/products";
-
+          
       const res = await AppCalls.get(url);
-
+      
       const result = res?.products || res?.data?.products || [];
-      const products = result.length ? result.splice(0, 5) : [];
-
+      const products = result.length > 0 ? result.splice(0, 5) : [];
+      
       setData((c) => ({
         ...c,
         products,
-        stats: {
-          ...c.stats,
+        stats: { 
+          ...c.stats, 
           // Safely target the count object without crashing
-          products: res?._count?.products || res?.data?._count?.products || 0,
+          products: res?._count?.products || res?.data?._count?.products || 0 
         },
       }));
     } catch (error) {
@@ -723,7 +721,7 @@ const DashboardScreen = () => {
                   </TouchableOpacity>
                 )}
                 ListFooterComponent={
-                  products.length > 1 && (
+                  products?.length > 1 && (
                     <TouchableOpacity
                       style={styles.loadMoreButton}
                       onPress={() =>
