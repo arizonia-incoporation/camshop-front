@@ -769,6 +769,10 @@ const SearchScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
+      <SEO
+        title={`Search | Camshop Busitema University`}
+      />
+
       <View style={styles.innerContainer}>
         {/* Header */}
         <View style={styles.header}>

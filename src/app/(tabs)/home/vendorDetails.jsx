@@ -19,6 +19,7 @@ import { colors } from "../../../theme/theme";
 import { useCart } from "../../../context/CartContext";
 import { useAuth } from "../../../context/AuthContext";
 import EmptyState from "../../../components/cards/emptyCard";
+import SEO from "../../../components/SEO";
 
 const VendorProfileScreen = () => {
   const navigation = useRouter();
@@ -226,6 +227,11 @@ const VendorProfileScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      <SEO
+        title={`${vendor.name} | Camshop Busitema`}
+        description={`Buy ${vendor?.products.map(item=>item?.name)} from ${vendor.name}. Fast campus delivery available.`}
+      />
 
       {/* Header */}
       {/* <View style={styles.header}>

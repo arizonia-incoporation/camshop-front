@@ -5,20 +5,33 @@ import { Ionicons } from '@expo/vector-icons';
 import Button from "../../../components/Button";
 import { colors, spacing, typography } from "../../../theme/theme";
 import { useRouter } from 'expo-router';
+import SEO from '../../../components/SEO';
 
 export default function OrderConfirmedScreen() {
   const navigation = useRouter();
   return (
     <SafeAreaView style={styles.container}>
+      <SEO title="Order placed | Camshop Busitema University" noindex={true} />
       <View style={styles.iconWrap}>
         <Ionicons name="checkmark" size={48} color={colors.white} />
       </View>
       <Text style={typography.display}>Order placed!</Text>
-      <Text style={[typography.bodyMuted, { textAlign: 'center', marginTop: spacing.xs }]}>
-        The seller has been notified and will start preparing your order. A delivery partner will message you to arrange handoff — pay them in cash or Mobile Money when your order arrives.
+      <Text
+        style={[
+          typography.bodyMuted,
+          { textAlign: "center", marginTop: spacing.xs },
+        ]}
+      >
+        The seller has been notified and will start preparing your order. A
+        delivery partner will message you to arrange handoff — pay them in cash
+        or Mobile Money when your order arrives.
       </Text>
-      <View style={{  justifyContent: 'center' }}>
-        <Button title="Back to shopping" style={{ marginTop: spacing.xl, width: 220 }} onPress={() => navigation.push('/home')} />
+      <View style={{ justifyContent: "center" }}>
+        <Button
+          title="Back to shopping"
+          style={{ marginTop: spacing.xl, width: 220 }}
+          onPress={() => navigation.push("/home")}
+        />
       </View>
     </SafeAreaView>
   );

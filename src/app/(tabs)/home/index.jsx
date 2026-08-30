@@ -12,18 +12,16 @@ import {
   RefreshControl,
   Animated,
   Dimensions,
-  TextInput,
-  Modal,
-  FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { colors } from "../../../theme/theme";
 import AppCalls from "../../../utils/network";
-import { useRouter } from "expo-router";
 import { useCart } from "../../../context/CartContext";
 import { useAuth } from "../../../context/AuthContext";
 import PaymentMethodsBanner from "../../../components/PaymentMethodsBanner";
 import { useNotifications } from "../../../context/NotificationContext";
+import SEO from "../../../components/SEO";
 
 const { width, height } = Dimensions.get("window");
 
@@ -480,6 +478,8 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={colors.lime} />
+
+      <SEO />
 
       {/* Animated Header */}
       <Animated.View

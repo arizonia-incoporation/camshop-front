@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { colors, spacing, typography, radius } from "../../../theme/theme";
 import { useNotifications } from "../../../context/NotificationContext";
 import EmptyState from "../../../components/cards/emptyCard";
+import SEO from "../../../components/SEO";
 
 export default function NotificationListScreen() {
   const navigation = useRouter();
@@ -58,11 +59,12 @@ export default function NotificationListScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <SEO title="Notifications | Camshop Busitema University" noindex={true} />
       <View style={styles.header}>
         <Text style={[typography.display, { marginTop: spacing.sm }]}>
           Notifications
         </Text>
-        {unreadCount > 0 && (<Text>({unreadCount} unread)</Text>)}
+        {unreadCount > 0 && <Text>({unreadCount} unread)</Text>}
       </View>
 
       {loading ? (

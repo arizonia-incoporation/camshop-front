@@ -21,6 +21,7 @@ import OrderItemCard from "../../../components/cards/orderItemCard";
 import AppCalls from "../../../utils/network";
 import EmptyState from "../../../components/cards/emptyCard";
 import PaymentMethodsBanner from "../../../components/PaymentMethodsBanner";
+import SEO from "../../../components/SEO";
 
 const { width } = Dimensions.get("window");
 const DashboardScreen = () => {
@@ -969,6 +970,7 @@ const DashboardScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#f59e0b" />
+      <SEO title="My Dashboard | Camshop Busitema University" noindex={true} />
       {renderItem()}
     </SafeAreaView>
   );

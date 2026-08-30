@@ -169,6 +169,7 @@ const CheckoutScreen = () => {
       contentContainerStyle={{ paddingBottom: 20 }}
       showsVerticalScrollIndicator={false}
     >
+      <SEO title="Checkout | Camshop Busitema University" noindex={true} />
       <View style={styles.tabHeader}>
         <View style={styles.tabIconContainer}>
           <Ionicons name="location-sharp" size={40} color={colors.lime} />

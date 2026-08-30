@@ -19,6 +19,7 @@ import AppCalls from "../../../utils/network";
 import { useCart } from "../../../context/CartContext";
 import { colors } from "../../../theme/theme";
 import { showToast } from "../../../utils/toast";
+import SEO from "../../../components/SEO";
 
 const { width } = Dimensions.get("window");
 
@@ -126,6 +127,11 @@ const ProductDetailsScreen = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      <SEO 
+        title={`${product.name} | Camshop Busitema University`}
+        description={`Buy ${product.name} from ${product.vendor.name}. Fast campus delivery available.`}
+      />
 
       {/* Header */}
       {/* <View style={styles.header}>

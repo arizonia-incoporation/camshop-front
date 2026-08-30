@@ -43,7 +43,7 @@ const ListingScreen = () => {
   const [userRole, setUserRole] = useState("user");
   const [expandedId, setExpandedId] = useState(null);
   const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadMoreUrl, setLoadMoreUrl] = useState(null);
 
@@ -515,8 +515,9 @@ const ListingScreen = () => {
           </ScrollView>
         )}
       </View>
-
-      {type === "chapchap" && <ChapChapScreen type={type} />}
+      <View style={styles.listContent}>
+        {type === "chapchap" && <ChapChapScreen type={type} />}
+      </View>
 
       {/* Content */}
       {type !== "chapchap" && loading && (

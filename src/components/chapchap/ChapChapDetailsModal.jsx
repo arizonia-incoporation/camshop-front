@@ -14,12 +14,13 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import ChapChapPriceEditor from "./ChapChapPriceEditor";
+import { useAuth } from "../../context/AuthContext";
 
 const ChapChapDetailsModal = ({
   visible,
   order,
   onClose,
-  userRole,
+  // userRole,
   onUpdate,
 }) => {
   const router = useRouter();
@@ -27,9 +28,11 @@ const ChapChapDetailsModal = ({
   const [updatedItems, setUpdatedItems] = useState([]);
   const [deliveryNote, setDeliveryNote] = useState("");
   const [showNoteInput, setShowNoteInput] = useState(false);
+  const { user } = useAuth();
+  const userRole = user.role;
 
   useEffect(() => {
-    console.log(order)
+    console.log(order);
     if (order) {
       setUpdatedItems(order.items.map((item) => ({ ...item })));
     }
@@ -392,10 +395,10 @@ const ChapChapDetailsModal = ({
               </View>
               <View style={styles.summaryMeta}>
                 <Text style={styles.summaryMetaText}>
-                  📦 {order?.items?.length} items
+                  {order?.items?.length} items
                 </Text>
                 <Text style={styles.summaryMetaText}>
-                  💰 UGX{" "}
+                  UGX{" "}
                   {updatedItems
                     .reduce(
                       (sum, item) =>
@@ -405,14 +408,14 @@ const ChapChapDetailsModal = ({
                     .toLocaleString()}
                 </Text>
                 <Text style={styles.summaryMetaText}>
-                  🚚 {order.deliveryInfo?.label || "Delivery"}
+                  {order.deliveryInfo?.label || "Delivery"}
                 </Text>
               </View>
             </View>
           </View>
           {console.log(updatedItems)}
 
-          {/* Items Section 
+          {/* Items Section  */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Items</Text>
             {updatedItems?.map((item, index) => (
@@ -443,7 +446,7 @@ const ChapChapDetailsModal = ({
                 </View>
               </View>
             ))}
-          </View> */}
+          </View>
 
           {/* Delivery Note Input (for deliverer) */}
           {canMarkDelivered && (

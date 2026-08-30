@@ -17,6 +17,7 @@ import { useCart } from "../../../context/CartContext";
 import { colors, spacing, typography, radius } from "../../../theme/theme";
 import CartItemCard from "../../../components/cards/cartItemCard";
 import EmptyState from "../../../components/cards/emptyCard";
+import SEO from "../../../components/SEO";
 
 export default function CartScreen() {
   const navigation = useRouter();
@@ -80,13 +81,14 @@ export default function CartScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <SEO title="My Cart | Camshop Busitema University" noindex={true} />
       <Text
         style={[
           typography.display,
           { paddingHorizontal: spacing.lg, marginTop: spacing.sm },
         ]}
       >
-        Your cart
+        My cart
       </Text>
       <FlatList
         data={items}

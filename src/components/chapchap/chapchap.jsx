@@ -93,13 +93,13 @@ const ChapChapScreen = ({type}) => {
 
   const handleOrderPress = (order) => {
     setSelectedOrder(order);
-    
+    navigation.push("/profile/cha-chap?id="+item.id)
       console.log(
         "*************************>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",
         order,
       );
 
-    // setModalVisible(true);
+    setModalVisible(true);
   };
 
   const handleModalClose = () => {
