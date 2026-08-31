@@ -11,21 +11,17 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useLocalSearchParams, Stack } from "expo-router";
-import ChapChapDetailsModal from "./ChapChapDetailsModal";
+import { Stack, useRouter } from "expo-router";
 import ChapChapCard from "./ChapChapCard";
 import EmptyState from "../cards/emptyCard";
 import AppCalls from "../../utils/network";
 
 const ChapChapScreen = ({type}) => {
-  const navigation = useNavigation();
+  const navigation = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [orders, setOrders] = useState([]);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [userRole, setUserRole] = useState("user");
   const [pagination, setPagination] = useState({
     page: 1,
     hasNextPage: false,
@@ -49,13 +45,11 @@ const ChapChapScreen = ({type}) => {
       let response;
       if (type === "chapchap") {
         response = await AppCalls.get("/order/chap?page=" + page);
-        console.log(response)
       } else {
         response = await getChapChapDeliveries({ page, limit: 10 });
       }
 
       const data = response.data;
-      console.log(data)
 
       if (page === 1) {
         setOrders(data.items || []);
@@ -92,14 +86,7 @@ const ChapChapScreen = ({type}) => {
   };
 
   const handleOrderPress = (order) => {
-    setSelectedOrder(order);
-    navigation.push("/profile/cha-chap?id="+item.id)
-      console.log(
-        "*************************>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>",
-        order,
-      );
-
-    setModalVisible(true);
+    navigation.navigate("/profile/chap-chap?id="+order.id);
   };
 
   const handleModalClose = () => {
@@ -123,7 +110,6 @@ const ChapChapScreen = ({type}) => {
   }
 
   return (
-    <View style={styles.container}>
       <FlatList
         data={orders}
         renderItem={({ item }) => (
@@ -162,16 +148,6 @@ const ChapChapScreen = ({type}) => {
           </View>
         }
       />
-
-      {/* Details Modal */}
-      <ChapChapDetailsModal
-        visible={modalVisible}
-        order={selectedOrder}
-        onClose={handleModalClose}
-        userRole={userRole}
-        onUpdate={handleOrderUpdate}
-      />
-    </View>
   );
 };
 

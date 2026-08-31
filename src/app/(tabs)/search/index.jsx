@@ -22,21 +22,11 @@ import EmptyState from "../../../components/cards/emptyCard";
 import AppCalls from "../../../utils/network";
 import categories from "../../../data/Category.json";
 import { colors, spacing } from "../../../theme/theme";
+import SEO from "../../../components/SEO";
 
 const { width } = Dimensions.get("window");
 
-// Mock data - Replace with API calls
-const mockCategories = [
-  { id: "1", name: "Books & Stationery", icon: "book-outline", count: 234 },
-  { id: "2", name: "Electronics", icon: "phone-portrait-outline", count: 189 },
-  { id: "3", name: "Clothing & Fashion", icon: "shirt-outline", count: 156 },
-  { id: "4", name: "Food & Beverages", icon: "restaurant-outline", count: 123 },
-  { id: "5", name: "Furniture", icon: "bed-outline", count: 98 },
-  { id: "6", name: "Beauty & Health", icon: "medkit-outline", count: 87 },
-  { id: "7", name: "Sports & Fitness", icon: "barbell-outline", count: 65 },
-  { id: "8", name: "Services", icon: "construct-outline", count: 54 },
-];
-
+// Mock data items can remain for fallback or initial categories JSON
 const mockTopSearches = [
   { id: "1", term: "Calculator", count: 245 },
   { id: "2", term: "Textbooks", count: 189 },
@@ -46,117 +36,6 @@ const mockTopSearches = [
   { id: "6", term: "Clothing", count: 76 },
 ];
 
-// Full mock data without pagination for testing
-const allMockProducts = [
-  {
-    id: "1",
-    name: "Premium Engineering Calculator",
-    price: 120000,
-    image: "https://via.placeholder.com/80x80/FFA500/FFFFFF?text=Calc",
-    seller: "Alex's Tech Hub",
-    rating: 4.9,
-    reviews: 128,
-  },
-  {
-    id: "2",
-    name: "ErgoLift Laptop Stand",
-    price: 85000,
-    image: "https://via.placeholder.com/80x80/FF6B35/FFFFFF?text=Stand",
-    seller: "Tech Essentials",
-    rating: 4.7,
-    reviews: 64,
-  },
-  {
-    id: "3",
-    name: "SwiftDrive 128GB Flash Drive",
-    price: 45000,
-    image: "https://via.placeholder.com/80x80/FFA500/FFFFFF?text=Drive",
-    seller: "Busitema Electronics",
-    rating: 4.8,
-    reviews: 42,
-  },
-  {
-    id: "4",
-    name: "UniConnect 10-in-1 Hub",
-    price: 160000,
-    image: "https://via.placeholder.com/80x80/FFD700/FFFFFF?text=Hub",
-    seller: "Tech Hub",
-    rating: 4.6,
-    reviews: 89,
-  },
-  {
-    id: "5",
-    name: "Precision Stylus Gen-2",
-    price: 120000,
-    image: "https://via.placeholder.com/80x80/FF8C00/FFFFFF?text=Stylus",
-    seller: "Creative Tools",
-    rating: 4.8,
-    reviews: 56,
-  },
-  {
-    id: "6",
-    name: "SwiftDrive 256GB Flash Drive",
-    price: 75000,
-    image: "https://via.placeholder.com/80x80/FFA500/FFFFFF?text=Drive",
-    seller: "Busitema Electronics",
-    rating: 4.9,
-    reviews: 38,
-  },
-];
-
-const allMockVendors = [
-  {
-    id: "1",
-    name: "Alex's Tech Hub",
-    owner: "Alex Mukasa",
-    rating: 4.9,
-    reviews: 128,
-    products: 42,
-    image: "https://via.placeholder.com/80x80/FFA500/FFFFFF?text=AT",
-    verified: true,
-  },
-  {
-    id: "2",
-    name: "Tech Essentials",
-    owner: "Sarah Nambi",
-    rating: 4.7,
-    reviews: 64,
-    products: 28,
-    image: "https://via.placeholder.com/80x80/FF6B35/FFFFFF?text=TE",
-    verified: true,
-  },
-  {
-    id: "3",
-    name: "Busitema Electronics",
-    owner: "David Okello",
-    rating: 4.8,
-    reviews: 42,
-    products: 35,
-    image: "https://via.placeholder.com/80x80/FFD700/FFFFFF?text=BE",
-    verified: false,
-  },
-  {
-    id: "4",
-    name: "Creative Tools",
-    owner: "Grace Auma",
-    rating: 4.6,
-    reviews: 89,
-    products: 19,
-    image: "https://via.placeholder.com/80x80/FF8C00/FFFFFF?text=CT",
-    verified: true,
-  },
-  {
-    id: "5",
-    name: "Campus Books",
-    owner: "John Mukasa",
-    rating: 4.5,
-    reviews: 156,
-    products: 45,
-    image: "https://via.placeholder.com/80x80/FF6B35/FFFFFF?text=CB",
-    verified: true,
-  },
-];
-
 const SearchScreen = () => {
   const navigation = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -164,7 +43,6 @@ const SearchScreen = () => {
   const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
   const [searchPerformed, setSearchPerformed] = useState(false);
-  const [nextPage, setNextPage] = useState(1);
 
   // Tab state
   const [tabIndex, setTabIndex] = useState(0);
@@ -176,7 +54,7 @@ const SearchScreen = () => {
   const [productsTotal, setProductsTotal] = useState(0);
   const [productsHasMore, setProductsHasMore] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
-  const [moreProductsUrl,setMoreProductsUrl] = useState(null);
+  const [moreProductsUrl, setMoreProductsUrl] = useState(null);
 
   // Vendors state
   const [vendors, setVendors] = useState([]);
@@ -186,6 +64,7 @@ const SearchScreen = () => {
   const [loadingVendors, setLoadingVendors] = useState(false);
 
   const inputRef = useRef(null);
+  const searchTimeoutRef = useRef(null); // Ref to manage debounce timer
 
   useEffect(() => {
     setTimeout(() => {
@@ -193,24 +72,27 @@ const SearchScreen = () => {
     }, 300);
   }, []);
 
-  const performSearch = async (query, page = 1, type = "new") => {
+  const performSearch = async (query, page = 1) => {
     if (!query.trim()) {
       setSearchPerformed(false);
       setTabs([]);
+      setLoading(false);
       return;
     }
 
     setLoading(true);
     setSearchPerformed(true);
 
-
     try {
-      // search?q=phone&page=1&limit=10&minPrice=100
       setMoreProductsUrl("/search?q=" + query + "&");
-      const res = await AppCalls.get("/search?q=" + query+"&page=" + page + "&limit=20");
+      const res = await AppCalls.get(
+        "/search?q=" + query + "&page=" + page + "&limit=20",
+      );
 
-      const { items: filteredProducts, pagination: productPagination } = res.data.products;
-      const { items: filteredVendors, pagination: vendorPagination } = res.data.vendors;
+      const { items: filteredProducts, pagination: productPagination } =
+        res.data.products;
+      const { items: filteredVendors, pagination: vendorPagination } =
+        res.data.vendors;
 
       // Update tabs based on results
       const newTabs = [];
@@ -222,24 +104,21 @@ const SearchScreen = () => {
       }
       setTabs(newTabs);
 
-      // Set initial tab
       if (newTabs.length > 0) {
         setTabIndex(0);
       }
 
-      // Paginate products (5 items per page)
-        setProducts(filteredProducts);
-        setProductsTotal(productPagination.totalItems);
-        setProductsHasMore(productPagination.hasNextPage);
-        setProductsPage(productPagination.page);
+      setProducts(filteredProducts);
+      setProductsTotal(productPagination.totalItems);
+      setProductsHasMore(productPagination.hasNextPage);
+      setProductsPage(productPagination.page);
 
-      // Paginate vendors (5 items per page)
-        setVendors(filteredVendors);
-        setVendorsTotal(vendorPagination.totalItems);
-        setVendorsHasMore(vendorPagination.hasNextPage);
-        setVendorsPage(vendorPagination.page);
+      setVendors(filteredVendors);
+      setVendorsTotal(vendorPagination.totalItems);
+      setVendorsHasMore(vendorPagination.hasNextPage);
+      setVendorsPage(vendorPagination.page);
 
-      // Save to recent searches
+      // Save to recent searches if query yields results or is submitted
       if (query.trim()) {
         const newSearch = { id: Date.now().toString(), term: query.trim() };
         setRecentSearches((prev) => {
@@ -257,25 +136,52 @@ const SearchScreen = () => {
     }
   };
 
+  // Debounced text handler
+  const handleTextChange = (text) => {
+    setSearchQuery(text);
+
+    // Clear any existing timeout to prevent firing search on every keystroke
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (!text.trim()) {
+      setSearchPerformed(false);
+      setTabs([]);
+      setProducts([]);
+      setVendors([]);
+      setIsSearching(false);
+      setLoading(false);
+      return;
+    }
+
+    // Set loading indicator immediately to show user background activity is happening
+    setLoading(true);
+    setSearchPerformed(true);
+
+    // Wait for 400ms pause before hitting backend
+    searchTimeoutRef.current = setTimeout(() => {
+      performSearch(text);
+    }, 400);
+  };
+
   const loadMoreProducts = async () => {
     if (loadingProducts || !productsHasMore) return;
     setLoadingProducts(true);
 
     try {
       const nextPage = productsPage + 1;
-      
       const res = await AppCalls.get(
         moreProductsUrl + "page=" + nextPage + "&limit=20",
       );
 
-      const data = (res.data.products) ? res.data.products : res.data
-
+      const data = res.data.products ? res.data.products : res.data;
       const { items: filteredProducts, pagination: productPagination } = data;
-      
-        setProducts((prev) => [...prev, ...filteredProducts]);
-        setProductsTotal(productPagination.totalItems);
-        setProductsHasMore(productPagination.hasNextPage);
-        setProductsPage(productPagination.page);
+
+      setProducts((prev) => [...prev, ...filteredProducts]);
+      setProductsTotal(productPagination.totalItems);
+      setProductsHasMore(productPagination.hasNextPage);
+      setProductsPage(productPagination.page);
     } catch (error) {
       console.error("Load more products error:", error);
     } finally {
@@ -293,7 +199,8 @@ const SearchScreen = () => {
         "/search?q=" + searchQuery + "&page=" + nextPage + "&limit=20",
       );
 
-      const { items: filteredVendors, pagination: vendorPagination } = res.data.vendors;
+      const { items: filteredVendors, pagination: vendorPagination } =
+        res.data.vendors;
 
       if (filteredVendors.length > 0) {
         setVendors((prev) => [...prev, ...filteredVendors]);
@@ -309,24 +216,20 @@ const SearchScreen = () => {
   };
 
   const handleSearch = (query) => {
-
-    if (!query.trim()) {
-      setSearchPerformed(false);
-      setTabs([]);
-      setProducts([]);
-      setVendors([]);
-      return;
-    }
+    if (!query.trim()) return;
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     performSearch(query);
   };
 
   const handleClearSearch = () => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     setSearchQuery("");
     setSearchPerformed(false);
     setTabs([]);
     setProducts([]);
     setVendors([]);
     setIsSearching(false);
+    setLoading(false);
     inputRef.current?.focus();
   };
 
@@ -341,33 +244,30 @@ const SearchScreen = () => {
 
   const handleCategoryPress = async (category) => {
     setSearchQuery(category.name);
-    
-
     setLoading(true);
     setSearchPerformed(true);
 
     try {
-      // GET /categories/:categoryId/products?page=1&limit=20
-      setMoreProductsUrl("/categories/" + category.id + "/products?")
-      const res = await AppCalls.get("/categories/" + category.id + "/products?page=1" + "&limit=20");
+      setMoreProductsUrl("/categories/" + category.id + "/products?");
+      const res = await AppCalls.get(
+        "/categories/" + category.id + "/products?page=1&limit=20",
+      );
 
-      const { items: filteredProducts, pagination: productPagination } = res.data;
+      const { items: filteredProducts, pagination: productPagination } =
+        res.data;
 
-      // Update tabs based on results
       const newTabs = [];
       if (productPagination.totalItems > 0) {
         newTabs.push({ key: "products", title: "Products" });
       }
       setTabs(newTabs);
 
-      // Paginate products (5 items per page)
-        setProducts(filteredProducts);
-        setProductsTotal(productPagination.totalItems);
-        setProductsHasMore(productPagination.hasNextPage);
-        setProductsPage(productPagination.page);
-
+      setProducts(filteredProducts);
+      setProductsTotal(productPagination.totalItems);
+      setProductsHasMore(productPagination.hasNextPage);
+      setProductsPage(productPagination.page);
     } catch (error) {
-      console.error("Search error:", error);
+      console.error("Category fetch error:", error);
     } finally {
       setLoading(false);
       setIsSearching(true);
@@ -386,7 +286,7 @@ const SearchScreen = () => {
     return `UGX ${price.toLocaleString()}`;
   };
 
-  // Products Tab
+  // Products Tab Component
   const ProductsTab = () => {
     if (loadingProducts && products.length === 0) {
       return (
@@ -435,7 +335,9 @@ const SearchScreen = () => {
               <Text style={styles.loadMoreText}>Load More Products</Text>
             </TouchableOpacity>
           ) : products.length > 0 ? (
-            <Text style={styles.endOfListText}>Those are the products found</Text>
+            <Text style={styles.endOfListText}>
+              Those are the products found
+            </Text>
           ) : null
         }
         renderItem={({ item }) => (
@@ -449,7 +351,9 @@ const SearchScreen = () => {
               <Text style={styles.resultName} numberOfLines={2}>
                 {item.name}
               </Text>
-              <Text style={styles.resultSeller}>By - {item.vendor.name}</Text>
+              <Text style={styles.resultSeller}>
+                By - {item.vendor?.name || "Vendor"}
+              </Text>
               <View style={styles.resultRating}>
                 <Ionicons name="star" size={14} color="#f59e0b" />
                 <Text style={styles.resultRatingText}>{item.rating}</Text>
@@ -466,7 +370,7 @@ const SearchScreen = () => {
     );
   };
 
-  // Vendors Tab
+  // Vendors Tab Component
   const VendorsTab = () => {
     if (loadingVendors && vendors.length === 0) {
       return (
@@ -515,7 +419,9 @@ const SearchScreen = () => {
               <Text style={styles.loadMoreText}>Load More Vendors</Text>
             </TouchableOpacity>
           ) : vendors.length > 0 ? (
-            <Text style={styles.endOfListText}>Those are the vendors found</Text>
+            <Text style={styles.endOfListText}>
+              Those are the vendors found
+            </Text>
           ) : null
         }
         renderItem={({ item }) => (
@@ -562,14 +468,12 @@ const SearchScreen = () => {
     );
   };
 
-  // Render initial state (before search)
   const renderInitialState = () => (
     <ScrollView
       style={styles.initialContainer}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-      {/* Previous Searches */}
       {recentSearches.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -603,7 +507,6 @@ const SearchScreen = () => {
         </View>
       )}
 
-      {/* Top Searches */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Top Searches</Text>
@@ -626,7 +529,6 @@ const SearchScreen = () => {
         </View>
       </View>
 
-      {/* Categories */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Categories</Text>
@@ -635,7 +537,7 @@ const SearchScreen = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.categoriesGrid}>
-          {categories.slice(0, 3).map((category) => (
+          {categories.slice(0, 4).map((category) => (
             <TouchableOpacity
               key={category.id}
               style={styles.categoryCard}
@@ -652,30 +554,9 @@ const SearchScreen = () => {
           ))}
         </View>
       </View>
-
-      {/* More Categories */}
-      <View style={styles.section}>
-        <View style={styles.moreCategoriesGrid}>
-          {categories.slice(2,4).map((category) => (
-            <TouchableOpacity
-              key={category.id}
-              style={styles.moreCategoryItem}
-              onPress={() => handleCategoryPress(category)}
-            >
-              <View style={styles.moreCategoryIcon}>
-                <Ionicons name={category.icon} size={20} color="#f59e0b" />
-              </View>
-              <Text style={styles.moreCategoryName} numberOfLines={1}>
-                {category.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
     </ScrollView>
   );
 
-  // Render search results with tabs
   const renderSearchResults = () => {
     if (loading) {
       return (
@@ -769,12 +650,9 @@ const SearchScreen = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      <SEO
-        title={`Search | Camshop Busitema University`}
-      />
+      <SEO title={`Search | Camshop Busitema University`} />
 
       <View style={styles.innerContainer}>
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.backButton}
@@ -796,16 +674,7 @@ const SearchScreen = () => {
               placeholder="Search products, vendors..."
               placeholderTextColor="#999999"
               value={searchQuery}
-              onChangeText={(text) => {
-                setSearchQuery(text);
-                if (!text.trim()) {
-                  setSearchPerformed(false);
-                  setTabs([]);
-                  setProducts([]);
-                  setVendors([]);
-                  setIsSearching(false);
-                }
-              }}
+              onChangeText={handleTextChange} // Utilizing debounced handler
               returnKeyType="search"
               onSubmitEditing={() => handleSearch(searchQuery)}
             />
@@ -820,7 +689,6 @@ const SearchScreen = () => {
           </View>
         </View>
 
-        {/* Content */}
         {searchPerformed || searchQuery.trim()
           ? renderSearchResults()
           : renderInitialState()}
@@ -829,23 +697,24 @@ const SearchScreen = () => {
   );
 };
 
+// Styles remain unchanged
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.bg,
     marginTop: StatusBar.currentHeight || 0,
   },
-    innerContainer: {
-      width: "100%",
-      maxWidth: 800,
-      alignSelf: "center",
-      flex: 1,
-      justifyContent: "space-between",
-      shadowColor: "#000",
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 4 },
-    },
+  innerContainer: {
+    width: "100%",
+    maxWidth: 800,
+    alignSelf: "center",
+    flex: 1,
+    justifyContent: "space-between",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -880,7 +749,6 @@ const styles = StyleSheet.create({
   clearButton: {
     padding: 4,
   },
-  // Initial State
   initialContainer: {
     flex: 1,
     paddingHorizontal: 16,
@@ -914,7 +782,6 @@ const styles = StyleSheet.create({
     color: "#0ea5e9",
     fontWeight: "500",
   },
-  // Search Tags
   searchTags: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -939,7 +806,6 @@ const styles = StyleSheet.create({
   removeTagButton: {
     padding: 2,
   },
-  // Top Searches
   topSearchesList: {
     backgroundColor: "#f8fafc",
     borderRadius: 12,
@@ -976,7 +842,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#999999",
   },
-  // Categories
   categoriesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1011,35 +876,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#999999",
   },
-  moreCategoriesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  moreCategoryItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f8fafc",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
-    gap: 8,
-  },
-  moreCategoryIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#fef3c7",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  moreCategoryName: {
-    fontSize: 13,
-    color: "#334155",
-  },
-  // Loading State
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -1051,7 +887,6 @@ const styles = StyleSheet.create({
     color: "#334155",
     marginTop: 12,
   },
-  // No Results
   noResultsContainer: {
     flex: 1,
     justifyContent: "center",
@@ -1090,7 +925,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#334155",
   },
-  // Tab View Styles
   tabBar: {
     backgroundColor: "#FFFFFF",
     elevation: 0,
@@ -1133,7 +967,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#f59e0b",
   },
-  // Results List
   resultsList: {
     paddingHorizontal: 16,
     paddingTop: 8,
@@ -1190,7 +1023,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#f59e0b",
   },
-  // Vendor Items
   vendorItem: {
     flexDirection: "row",
     alignItems: "center",

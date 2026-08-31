@@ -857,6 +857,29 @@ const DashboardScreen = () => {
                 <Text style={styles.quickActionLabel}>Earnings</Text>
               </TouchableOpacity>
 
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.push({
+                    pathname: "/profile/listing",
+                    params: {
+                      type: "chapchap",
+                      title: "My Quick-ies",
+                    },
+                  })
+                }
+                style={styles.quickAction}
+              >
+                <View
+                  style={[
+                    styles.quickActionIcon,
+                    { backgroundColor: "#fef3c7" },
+                  ]}
+                >
+                  <Ionicons name="flash" size={24} color="#ef4444" />
+                </View>
+                <Text style={styles.quickActionLabel}>ChapChap</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity style={styles.quickAction} onPress={logout}>
                 <View
                   style={[

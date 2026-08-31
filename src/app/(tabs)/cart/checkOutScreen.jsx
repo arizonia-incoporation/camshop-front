@@ -26,6 +26,7 @@ import { useCart } from "../../../context/CartContext";
 import AppCalls from "../../../utils/network";
 import { showToast } from "../../../utils/toast";
 import PaymentMethodsBanner from "../../../components/PaymentMethodsBanner";
+import SEO from "../../../components/SEO";
 
 const { width, height } = Dimensions.get("window");
 

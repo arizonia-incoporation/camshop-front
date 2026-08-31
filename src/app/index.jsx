@@ -7,6 +7,7 @@ import Logo from "../components/Logo";
 import Button from "../components/Button";
 import { colors, spacing, typography } from "../theme/theme";
 import { useAuth } from "../context/AuthContext";
+import SEO from "../components/SEO";
 
 export default function WelcomeScreen() {
   const navigation = useRouter();
@@ -19,6 +20,7 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <SEO />
       <View style={styles.innerContainer}>
         <View style={styles.hero}>
           <Logo size={84} />

@@ -1,3 +1,4 @@
+// app/(profile)/shared/BuyChapChapScreen.js
 import React, { useState, useEffect, useRef } from "react";
 import {
   SafeAreaView,
@@ -9,7 +10,6 @@ import {
   TextInput,
   ScrollView,
   FlatList,
-  Alert,
   ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
@@ -21,36 +21,75 @@ import { useRouter } from "expo-router";
 import { colors } from "../../../theme/theme";
 import AppCalls from "../../../utils/network";
 
+// --- CUSTOM ALERT COMPONENT ---
+const WebSafeAlert = ({
+  visible,
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  showCancel,
+  confirmText = "OK",
+  cancelText = "Cancel",
+}) => (
+  <Modal visible={visible} transparent animationType="fade">
+    <View style={styles.modalOverlay}>
+      <View style={styles.alertBox}>
+        <Text style={styles.alertTitle}>{title}</Text>
+        <Text style={styles.alertMessage}>{message}</Text>
+        <View style={styles.alertActions}>
+          {showCancel && (
+            <TouchableOpacity style={styles.alertBtnCancel} onPress={onCancel}>
+              <Text style={styles.alertBtnCancelText}>{cancelText}</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.alertBtnConfirm} onPress={onConfirm}>
+            <Text style={styles.alertBtnConfirmText}>{confirmText}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  </Modal>
+);
+
 const BuyChapChapScreen = () => {
   const navigation = useRouter();
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState([]);
-  const [currentItem, setCurrentItem] = useState({ name: "", amount: 0 });
+  const [currentItem, setCurrentItem] = useState({
+    name: "",
+    estimatedTotal: "",
+  });
   const [note, setNote] = useState("");
   const [deliveryInfo, setDeliveryInfo] = useState(null);
-  const [expanded, setExpanded] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showDestination, setShowDestination] = useState(false);
   const [destination, setDestination] = useState("");
 
+  // Alert State
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+    onCancel: null,
+    showCancel: false,
+  });
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const inputRef = useRef(null);
 
-  // Delivery time detection
   const getDeliveryInfo = () => {
     const now = new Date();
     const hours = now.getHours();
     const minutes = now.getMinutes();
 
-    // Afternoon delivery: 10:00 AM to 12:30 PM
     if (
       (hours === 10 && minutes >= 0) ||
       hours === 11 ||
       (hours === 12 && minutes <= 30)
     ) {
-      // Check if it's after 11:30 AM (cutoff for afternoon delivery)
       if (hours === 12 && minutes > 0 && minutes <= 30) {
-        // Still within afternoon window
         return {
           type: "afternoon",
           label: "Afternoon Delivery",
@@ -73,55 +112,47 @@ const BuyChapChapScreen = () => {
         hours === 11 ||
         (hours === 12 && minutes === 0)
       ) {
-        // Before 12:30 PM
-        const cutoffTime = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate(),
-          12,
-          30,
-          0,
-        );
         return {
           type: "afternoon",
           label: "Afternoon Delivery",
           time: "by 2:00 PM",
           cutoff: "12:30 PM",
-          cutoffTime: cutoffTime,
+          cutoffTime: new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            12,
+            30,
+            0,
+          ),
           isAvailable: true,
           icon: "sunny-outline",
           color: colors.lime,
         };
       }
     }
-
-    // Evening delivery: After 12:30 PM, before 5:00 PM (cutoff for evening)
     if (hours >= 13 && hours < 17) {
-      const cutoffTime = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        17,
-        0,
-        0,
-      );
       return {
         type: "evening",
         label: "Evening Delivery",
         time: "by 7:00 PM",
         cutoff: "5:00 PM",
-        cutoffTime: cutoffTime,
+        cutoffTime: new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          17,
+          0,
+          0,
+        ),
         isAvailable: true,
         icon: "moon-outline",
         color: "#0ea5e9",
       };
     }
-
-    // After 5:00 PM - Next day afternoon
     const nextDay = new Date(now);
     nextDay.setDate(nextDay.getDate() + 1);
     nextDay.setHours(10, 0, 0, 0);
-
     return {
       type: "next_afternoon",
       label: "Tomorrow Afternoon",
@@ -134,27 +165,18 @@ const BuyChapChapScreen = () => {
     };
   };
 
-  // Get time remaining
   const getTimeRemaining = (cutoffTime) => {
     const now = new Date();
     const diff = cutoffTime - now;
-
     if (diff <= 0) return "Time expired";
-
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m remaining`;
-    }
+    if (hours > 0) return `${hours}h ${minutes}m remaining`;
     return `${minutes}m remaining`;
   };
 
   useEffect(() => {
-    const info = getDeliveryInfo();
-    setDeliveryInfo(info);
-
-    // Animate in
+    setDeliveryInfo(getDeliveryInfo());
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 600,
@@ -162,17 +184,40 @@ const BuyChapChapScreen = () => {
     }).start();
   }, []);
 
-  // Update timer every minute
   useEffect(() => {
     if (deliveryInfo) {
-      const interval = setInterval(() => {
-        const updatedInfo = getDeliveryInfo();
-        setDeliveryInfo(updatedInfo);
-      }, 60000);
-
+      const interval = setInterval(
+        () => setDeliveryInfo(getDeliveryInfo()),
+        60000,
+      );
       return () => clearInterval(interval);
     }
   }, [deliveryInfo]);
+
+  const showAlert = (
+    title,
+    message,
+    onConfirm,
+    onCancel = null,
+    showCancel = false,
+    confirmText = "OK",
+  ) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      onConfirm: () => {
+        setAlertConfig((prev) => ({ ...prev, visible: false }));
+        if (onConfirm) onConfirm();
+      },
+      onCancel: () => {
+        setAlertConfig((prev) => ({ ...prev, visible: false }));
+        if (onCancel) onCancel();
+      },
+      showCancel,
+      confirmText,
+    });
+  };
 
   const addItem = () => {
     if (currentItem.name.trim()) {
@@ -180,435 +225,152 @@ const BuyChapChapScreen = () => {
         ...items,
         {
           id: Date.now().toString(),
-          ...currentItem,
+          name: currentItem.name,
+          estimatedTotal: currentItem.estimatedTotal,
           quantity: 1,
         },
       ]);
-      setCurrentItem({ name: "", amount: 0 });
+      setCurrentItem({ name: "", estimatedTotal: "" });
       inputRef.current?.focus();
     }
   };
 
   const removeItem = (id) => {
-    Alert.alert("Remove Item", "Are you sure you want to remove this item?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: () => {
-          setItems(items.filter((item) => item.id !== id));
-        },
+    showAlert(
+      "Remove Item",
+      "Are you sure you want to remove this item?",
+      () => {
+        setItems(items.filter((item) => item.id !== id));
       },
-    ]);
+      () => {},
+      true,
+      "Remove",
+    );
   };
 
   const updateQuantity = (id, change) => {
     setItems(
       items.map((item) => {
-        if (item.id === id) {
-          const newQuantity = Math.max(1, item.quantity + change);
-          return { ...item, quantity: newQuantity };
-        }
+        if (item.id === id)
+          return { ...item, quantity: Math.max(1, item.quantity + change) };
         return item;
       }),
     );
   };
 
+  const updateItemField = (id, field, value) => {
+    setItems(
+      items.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item,
+      ),
+    );
+  };
+
   const handleSubmit = () => {
     if (items.length === 0) {
-      Alert.alert(
+      showAlert(
         "Empty List",
         "Please add at least one item to your shopping list.",
       );
       return;
     }
-
     if (!deliveryInfo.isAvailable) {
-      Alert.alert(
+      showAlert(
         "Delivery Not Available",
         "Please wait for the next delivery window.",
       );
       return;
     }
-
     setShowDestination(true);
   };
 
   const confirmOrder = async () => {
     setLoading(true);
-    
-    const vrr = items.map((tx) => ({ name: tx.name, amount: Number(tx.amount), quantity: Number(tx.quantity) }));
+    const mappedItems = items.map((tx) => ({
+      name: tx.name,
+      estimatedTotal: Number(tx.estimatedTotal) || 0,
+      quantity: Number(tx.quantity),
+    }));
+    const orderData = { items: mappedItems, note: note, location: destination };
 
-    // Prepare order data
-    const orderData = {
-      items: vrr,
-      note: note,
-      location: destination,
-      total: 0,
-    };
-
-    // Simulate API call
     try {
       await AppCalls.post("/order/chap", orderData);
-
-      Alert.alert(
+      setShowConfirmation(false);
+      showAlert(
         "✅ Order Placed!",
-        `Your Chap Chap order has been placed successfully!\n\nItems: ${items.length}\nDelivery: ${deliveryInfo.label}\n\nVendors will review your list and get back to you.`,
-        [
-          {
-            text: "View Orders",
-            onPress: () => {
-              setShowConfirmation(false);
-              setItems([]);
-              setNote("");
-              navigation.navigate("/home");
-            },
-          },
-          {
-            text: "Continue Shopping",
-            onPress: () => {
-              setShowConfirmation(false);
-              setItems([]);
-              setNote("");
-            },
-          },
-        ],
+        `Your Chap Chap order has been placed successfully!\n\nItems: ${items.length}\nDelivery: ${deliveryInfo.label}`,
+        () => {
+          setItems([]);
+          setNote("");
+          navigation.navigate("/home");
+        },
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to place order. Please try again.");
+      showAlert("Error", "Failed to place order. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const renderDeliveryInfo = () => (
-    <View
-      style={[
-        styles.deliveryCard,
-        { borderColor: deliveryInfo?.color || colors.lime },
-      ]}
-    >
-      <View style={styles.deliveryHeader}>
-        <View style={styles.deliveryIconContainer}>
-          <Ionicons
-            name={deliveryInfo?.icon || "sunny-outline"}
-            size={28}
-            color={deliveryInfo?.color || colors.lime}
-          />
-        </View>
-        <View style={styles.deliveryText}>
-          <Text style={styles.deliveryLabel}>
-            {deliveryInfo?.label || "Delivery"}
-          </Text>
-          <Text style={styles.deliveryTime}>{deliveryInfo?.time || ""}</Text>
-        </View>
-        <View style={styles.deliveryTimer}>
-          <Ionicons
-            name="time-outline"
-            size={16}
-            color={deliveryInfo?.color || colors.lime}
-          />
-          <Text
-            style={[
-              styles.deliveryTimerText,
-              { color: deliveryInfo?.color || colors.lime },
-            ]}
-          >
-            {deliveryInfo ? getTimeRemaining(deliveryInfo.cutoffTime) : ""}
-          </Text>
-        </View>
-      </View>
-      <Text style={styles.deliveryCutoff}>
-        Cutoff: {deliveryInfo?.cutoff || ""}
-      </Text>
-    </View>
-  );
-
-  const renderItem = ({ item, index }) => (
-    <Animated.View
-      style={[
-        styles.listItem,
-        {
-          opacity: fadeAnim,
-          transform: [
-            {
-              translateX: fadeAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [50, 0],
-              }),
-            },
-          ],
-          animation: {
-            delay: index * 100,
-          },
-        },
-      ]}
-    >
-      <View style={styles.itemContent}>
-        <View style={styles.itemLeft}>
-          <View style={styles.itemNumber}>
-            <Text style={styles.itemNumberText}>{index + 1}</Text>
-          </View>
-          <Text style={styles.itemName}>{item.name}</Text>
-          <Text style={styles.itemName}>{item.amount}</Text>
-        </View>
-        <View style={styles.itemRight}>
-          <View style={styles.quantityControls}>
-            <TouchableOpacity
-              style={styles.quantityButton}
-              onPress={() => updateQuantity(item.id, -1)}
-            >
-              <Ionicons name="remove" size={16} color={colors.lime} />
-            </TouchableOpacity>
-            <Text style={styles.quantityText}>{item.quantity}</Text>
-            <TouchableOpacity
-              style={styles.quantityButton}
-              onPress={() => updateQuantity(item.id, 1)}
-            >
-              <Ionicons name="add" size={16} color={colors.lime} />
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            style={styles.removeButton}
-            onPress={() => removeItem(item.id)}
-          >
-            <Ionicons name="close" size={20} color="#ef4444" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Animated.View>
-  );
-
-  const renderConfirmationModal = () => (
-    <View style={styles.confirmationOverlay}>
-      <View style={styles.confirmationCard}>
-        <View style={styles.confirmationHeader}>
-          <Text style={styles.confirmationTitle}>Review Your Order</Text>
-          <TouchableOpacity
-            style={styles.confirmationClose}
-            onPress={() => setShowConfirmation(false)}
-          >
-            <Ionicons name="close" size={24} color="#334155" />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.confirmationContent}>
-          <View style={styles.confirmationSection}>
-            <Text style={styles.confirmationLabel}>Items ({items.length})</Text>
-            {items.map((item, index) => (
-              <View key={item.id} style={styles.confirmationItem}>
-                <Text style={styles.confirmationItemName}>
-                  {index + 1}. {item.name}
-                </Text>
-                <Text style={styles.confirmationItemQty}>×{item.quantity}</Text>
-              </View>
-            ))}
-          </View>
-
-          {note && (
-            <View style={styles.confirmationSection}>
-              <Text style={styles.confirmationLabel}>Note</Text>
-              <Text style={styles.confirmationNote}>{note}</Text>
+  const renderItem = ({ item, index }) => {
+    const itemTotal = (Number(item.estimatedTotal) || 0) * item.quantity;
+    return (
+      <Animated.View style={[styles.listItem, { opacity: fadeAnim }]}>
+        <View style={styles.itemContent}>
+          <View style={styles.itemLeft}>
+            <View style={styles.itemNumber}>
+              <Text style={styles.itemNumberText}>{index + 1}</Text>
             </View>
-          )}
-
-          <View style={styles.confirmationSection}>
-            <Text style={styles.confirmationLabel}>Delivery</Text>
-            <View style={styles.confirmationDelivery}>
-              <Ionicons
-                name={deliveryInfo?.icon || "sunny-outline"}
-                size={20}
-                color={deliveryInfo?.color || colors.lime}
+            <View style={styles.itemInputs}>
+              <TextInput
+                style={styles.editableName}
+                value={item.name}
+                onChangeText={(val) => updateItemField(item.id, "name", val)}
+                placeholder="Item name"
               />
-              <Text style={styles.confirmationDeliveryText}>
-                {deliveryInfo?.label} - {deliveryInfo?.time}
-              </Text>
+              <TextInput
+                style={styles.editablePrice}
+                value={String(item.estimatedTotal)}
+                onChangeText={(val) =>
+                  updateItemField(item.id, "estimatedTotal", val)
+                }
+                placeholder="Est. Price (UGX)"
+                keyboardType="numeric"
+              />
             </View>
           </View>
-
-          <View style={styles.confirmationNote}>
-            <Ionicons
-              name="information-circle-outline"
-              size={20}
-              color="#0ea5e9"
-            />
-            <Text style={styles.confirmationNoteText}>
-              Vendors will review your list and reach out with pricing and
-              availability.
-            </Text>
-          </View>
-        </ScrollView>
-
-        <View style={styles.confirmationActions}>
-          <TouchableOpacity
-            style={[styles.confirmationButton, styles.confirmationCancel]}
-            onPress={() => setShowConfirmation(false)}
-          >
-            <Text style={styles.confirmationCancelText}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.confirmationButton, styles.confirmationConfirm]}
-            onPress={confirmOrder}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <>
-                <Text style={styles.confirmationConfirmText}>Place Order</Text>
-                <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
-
-  // Destination Modal with Styling
-  const renderDestinationModal = () => (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={showDestination}
-      onRequestClose={() => setShowDestination(false)}
-    >
-      <View style={[styles.modalOverlay, styles.confirmationOverlay]}>
-        <View style={[styles.modalContainer, { width: "100%", height: "36%",  }]}>
-          {/* Header */}
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Where should we Deliver?</Text>
+          <View style={styles.itemRight}>
+            <View style={styles.quantityControls}>
+              <TouchableOpacity
+                style={styles.quantityButton}
+                onPress={() => updateQuantity(item.id, -1)}
+              >
+                <Ionicons name="remove" size={16} color={colors.lime} />
+              </TouchableOpacity>
+              <Text style={styles.quantityText}>{item.quantity}</Text>
+              <TouchableOpacity
+                style={styles.quantityButton}
+                onPress={() => updateQuantity(item.id, 1)}
+              >
+                <Ionicons name="add" size={16} color={colors.lime} />
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setShowDestination(false)}
+              style={styles.removeButton}
+              onPress={() => removeItem(item.id)}
             >
-              <Ionicons name="close" size={24} color="#334155" />
+              <Ionicons name="close" size={20} color="#ef4444" />
             </TouchableOpacity>
           </View>
-
-          <KeyboardAvoidingView
-            style={styles.modalKeyboardView}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={100}
-          >
-            <View style={styles.modalContent}>
-              {/* Location Input */}
-              <View style={styles.destinationInputWrapper}>
-                <View style={styles.destinationInputContainer}>
-                  <Ionicons
-                    name="location-outline"
-                    size={22}
-                    color={colors.lime}
-                    style={styles.destinationIcon}
-                  />
-                  <TextInput
-                    ref={inputRef}
-                    style={styles.destinationInput}
-                    placeholder="Enter your hostel, block, room number..."
-                    placeholderTextColor="#999999"
-                    value={destination}
-                    onChangeText={setDestination}
-                    returnKeyType="done"
-                    autoFocus={true}
-                  />
-                </View>
-                {!destination && (
-                  <Text style={styles.destinationHint}>
-                    ⚠️ Please enter your delivery location
-                  </Text>
-                )}
-              </View>
-
-              {/* Info Card */}
-              <View style={styles.destinationInfoCard}>
-                <Ionicons
-                  name="information-circle-outline"
-                  size={20}
-                  color="#0ea5e9"
-                />
-                <Text style={styles.destinationInfoText}>
-                  This helps vendors know where to deliver your items.
-                </Text>
-              </View>
-
-              {/* Action Buttons */}
-              <View style={styles.destinationActions}>
-                <TouchableOpacity
-                  style={[
-                    styles.destinationButton,
-                    styles.destinationCancelButton,
-                  ]}
-                  onPress={() => {
-                    Alert.alert(
-                      "Clear List",
-                      "Are you sure you want to clear your shopping list?",
-                      [
-                        { text: "Cancel", style: "cancel" },
-                        {
-                          text: "Clear",
-                          style: "destructive",
-                          onPress: () => {
-                            setItems([]);
-                            setCurrentItem({ name: "", amount: 0 });
-                            setShowDestination(false);
-                          },
-                        },
-                      ],
-                    );
-                  }}
-                >
-                  <Text style={styles.destinationCancelText}>Cancel</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.destinationButton,
-                    styles.destinationNextButton,
-                    (!destination || loading) &&
-                      styles.destinationButtonDisabled,
-                  ]}
-                  onPress={() => {
-                    setShowConfirmation(true);
-                    setShowDestination(false);
-                  }}
-                  disabled={loading || !destination}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
-                  ) : (
-                    <>
-                      <Text style={styles.destinationNextText}>Next</Text>
-                      <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Delivery Info */}
-              <View style={styles.deliveryInfoContainer}>
-                <View style={styles.deliveryInfoRow}>
-                  <Ionicons name="time-outline" size={16} color={colors.lime} />
-                  <Text style={styles.deliveryInfoLabel}>
-                    {deliveryInfo?.label || "Delivery"}
-                  </Text>
-                </View>
-                <View style={styles.deliveryInfoRow}>
-                  <Ionicons
-                    name="calendar-outline"
-                    size={16}
-                    color={colors.lime}
-                  />
-                  <Text style={styles.deliveryInfoLabel}>
-                    {deliveryInfo?.time || ""}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </KeyboardAvoidingView>
         </View>
-      </View>
-    </Modal>
-  );
+        <View style={styles.itemFooter}>
+          <Text style={styles.itemTotalText}>
+            Subtotal: UGX {itemTotal.toLocaleString()}
+          </Text>
+        </View>
+      </Animated.View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -623,34 +385,30 @@ const BuyChapChapScreen = () => {
           <Ionicons name="arrow-back" size={24} color="#334155" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Buy Chap Chap</Text>
-        <TouchableOpacity
-          style={styles.clearButton}
-          onPress={() => {
-            if (items.length > 0) {
-              Alert.alert(
+
+        {/* Only show delete icon if items exist */}
+        {items.length > 0 ? (
+          <TouchableOpacity
+            style={styles.clearButton}
+            onPress={() => {
+              showAlert(
                 "Clear List",
                 "Are you sure you want to clear your shopping list?",
-                [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Clear",
-                    style: "destructive",
-                    onPress: () => {
-                      setItems([]);
-                      setCurrentItem({ name: "", amount: 0 });
-                    },
-                  },
-                ],
+                () => {
+                  setItems([]);
+                  setCurrentItem({ name: "", estimatedTotal: "" });
+                },
+                () => {},
+                true,
+                "Clear",
               );
-            }
-          }}
-        >
-          <Ionicons
-            name="trash-outline"
-            size={22}
-            color={items.length > 0 ? "#ef4444" : "#cccccc"}
-          />
-        </TouchableOpacity>
+            }}
+          >
+            <Ionicons name="trash-outline" size={22} color="#ef4444" />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 30 }} />
+        )}
       </View>
 
       <KeyboardAvoidingView
@@ -663,19 +421,48 @@ const BuyChapChapScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Delivery Info */}
-          {renderDeliveryInfo()}
-
-          {/* Info Card */}
-          <View style={styles.infoCard}>
-            <Ionicons name="bulb-outline" size={20} color={colors.lime} />
-            <Text style={styles.infoText}>
-              Type what you need and we'll find it for you. No need to browse
-              through the app!
-            </Text>
+          <View
+            style={[
+              styles.deliveryCard,
+              { borderColor: deliveryInfo?.color || colors.lime },
+            ]}
+          >
+            <View style={styles.deliveryHeader}>
+              <View style={styles.deliveryIconContainer}>
+                <Ionicons
+                  name={deliveryInfo?.icon || "sunny-outline"}
+                  size={28}
+                  color={deliveryInfo?.color || colors.lime}
+                />
+              </View>
+              <View style={styles.deliveryText}>
+                <Text style={styles.deliveryLabel}>
+                  {deliveryInfo?.label || "Delivery"}
+                </Text>
+                <Text style={styles.deliveryTime}>
+                  {deliveryInfo?.time || ""}
+                </Text>
+              </View>
+              <View style={styles.deliveryTimer}>
+                <Ionicons
+                  name="time-outline"
+                  size={16}
+                  color={deliveryInfo?.color || colors.lime}
+                />
+                <Text
+                  style={[
+                    styles.deliveryTimerText,
+                    { color: deliveryInfo?.color || colors.lime },
+                  ]}
+                >
+                  {deliveryInfo
+                    ? getTimeRemaining(deliveryInfo.cutoffTime)
+                    : ""}
+                </Text>
+              </View>
+            </View>
           </View>
 
-          {/* Input Area */}
           <View style={styles.inputContainer}>
             <View style={styles.inputWrapper}>
               <TextInput
@@ -687,20 +474,19 @@ const BuyChapChapScreen = () => {
                 onChangeText={(key) =>
                   setCurrentItem((prev) => ({ ...prev, name: key }))
                 }
-                returnKeyType="done"
+                returnKeyType="next"
               />
               <TextInput
-                ref={inputRef}
-                style={styles.input}
-                placeholder="Price..."
+                style={styles.inputPrice}
+                placeholder="Est. Price"
                 placeholderTextColor="#999999"
-                value={currentItem.amount}
+                value={currentItem.estimatedTotal}
                 onChangeText={(key) =>
-                  setCurrentItem((prev) => ({ ...prev, amount: key }))
+                  setCurrentItem((prev) => ({ ...prev, estimatedTotal: key }))
                 }
                 onSubmitEditing={addItem}
                 returnKeyType="done"
-                keyboardType="number-pad"
+                keyboardType="numeric"
               />
               <TouchableOpacity
                 style={[
@@ -715,7 +501,6 @@ const BuyChapChapScreen = () => {
             </View>
           </View>
 
-          {/* Items List */}
           {items.length > 0 ? (
             <View style={styles.listSection}>
               <View style={styles.listHeader}>
@@ -734,13 +519,9 @@ const BuyChapChapScreen = () => {
             <View style={styles.emptyState}>
               <Ionicons name="list-outline" size={64} color="#cccccc" />
               <Text style={styles.emptyStateTitle}>Your list is empty</Text>
-              <Text style={styles.emptyStateSubtitle}>
-                Start typing items you need and tap the + button to add them
-              </Text>
             </View>
           )}
 
-          {/* Note Input */}
           {items.length > 0 && (
             <View style={styles.noteContainer}>
               <TextInput
@@ -756,7 +537,6 @@ const BuyChapChapScreen = () => {
             </View>
           )}
 
-          {/* Submit Button */}
           {items.length > 0 && (
             <TouchableOpacity
               style={[
@@ -766,34 +546,202 @@ const BuyChapChapScreen = () => {
               onPress={handleSubmit}
               disabled={!deliveryInfo?.isAvailable || loading}
             >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <>
-                  <Text style={styles.submitButtonText}>Proceed to Checkout</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-                </>
-              )}
+              <Text style={styles.submitButtonText}>Proceed to Checkout</Text>
+              <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           )}
-
-          {/* Bottom Spacing */}
           <View style={styles.bottomSpacing} />
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Confirmation Modal */}
-      {showConfirmation && renderConfirmationModal()}
-      {renderDestinationModal()}
+      {/* --- ROOT LEVEL MODALS FOR WEB SAFETY --- */}
+
+      {/* 1. Destination Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showDestination}
+        onRequestClose={() => setShowDestination(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Where should we Deliver?</Text>
+              <TouchableOpacity onPress={() => setShowDestination(false)}>
+                <Ionicons name="close" size={24} color="#334155" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalContent}>
+              <View style={styles.destinationInputContainer}>
+                <Ionicons
+                  name="location-outline"
+                  size={22}
+                  color={colors.lime}
+                  style={styles.destinationIcon}
+                />
+                <TextInput
+                  style={styles.destinationInput}
+                  placeholder="Hostel, block, room..."
+                  value={destination}
+                  onChangeText={setDestination}
+                  autoFocus
+                />
+              </View>
+              <View style={styles.destinationInfoCard}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={20}
+                  color="#0ea5e9"
+                />
+                <Text style={styles.destinationInfoText}>
+                  This helps vendors know where to deliver your items.
+                </Text>
+              </View>
+              <View style={styles.destinationActions}>
+                <TouchableOpacity
+                  style={[
+                    styles.destinationButton,
+                    styles.destinationCancelButton,
+                  ]}
+                  onPress={() => setShowDestination(false)}
+                >
+                  <Text style={styles.destinationCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.destinationButton,
+                    styles.destinationNextButton,
+                    (!destination || loading) &&
+                      styles.destinationButtonDisabled,
+                  ]}
+                  onPress={() => {
+                    setShowConfirmation(true);
+                    setShowDestination(false);
+                  }}
+                  disabled={loading || !destination}
+                >
+                  <Text style={styles.destinationNextText}>
+                    Next <Ionicons name="checkmark" size={18} />
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 2. Review Order Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showConfirmation}
+        onRequestClose={() => setShowConfirmation(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { maxHeight: "90%" }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Review Your Order</Text>
+              <TouchableOpacity onPress={() => setShowConfirmation(false)}>
+                <Ionicons name="close" size={24} color="#334155" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              <Text style={styles.confirmationLabel}>
+                Items ({items.length})
+              </Text>
+              {items.map((item, index) => (
+                <View key={item.id} style={styles.confirmationItem}>
+                  <Text style={styles.confirmationItemName}>
+                    {index + 1}. {item.name}
+                  </Text>
+                  <Text style={styles.confirmationItemQty}>
+                    ×{item.quantity} (UGX{" "}
+                    {(
+                      (Number(item.estimatedTotal) || 0) * item.quantity
+                    ).toLocaleString()}
+                    )
+                  </Text>
+                </View>
+              ))}
+              <View style={styles.confirmationTotalRow}>
+                <Text style={styles.confirmationTotalLabel}>
+                  Est. Grand Total:
+                </Text>
+                <Text style={styles.confirmationTotalValue}>
+                  UGX{" "}
+                  {items
+                    .reduce(
+                      (sum, item) =>
+                        sum +
+                        (Number(item.estimatedTotal) || 0) * item.quantity,
+                      0,
+                    )
+                    .toLocaleString()}
+                </Text>
+              </View>
+
+              {note ? (
+                <>
+                  <Text style={[styles.confirmationLabel, { marginTop: 16 }]}>
+                    Note
+                  </Text>
+                  <Text style={styles.confirmationNote}>{note}</Text>
+                </>
+              ) : null}
+
+              <Text style={[styles.confirmationLabel, { marginTop: 16 }]}>
+                Delivery Location
+              </Text>
+              <Text style={styles.confirmationNote}>{destination}</Text>
+
+              <View style={styles.confirmationNoteCard}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={20}
+                  color="#0ea5e9"
+                />
+                <Text style={styles.confirmationNoteText}>
+                  Vendors will review your list and reach out with exact market
+                  pricing and availability.
+                </Text>
+              </View>
+            </ScrollView>
+            <View style={styles.destinationActions}>
+              <TouchableOpacity
+                style={[
+                  styles.destinationButton,
+                  styles.destinationCancelButton,
+                ]}
+                onPress={() => setShowConfirmation(false)}
+              >
+                <Text style={styles.destinationCancelText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.destinationButton, styles.destinationNextButton]}
+                onPress={confirmOrder}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={styles.destinationNextText}>
+                    Place Order <Ionicons name="checkmark" size={18} />
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 3. Custom Alert */}
+      <WebSafeAlert {...alertConfig} />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
+  safeArea: { flex: 1, backgroundColor: "#FFFFFF" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -803,28 +751,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#f8fafc",
   },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#334155",
-  },
-  clearButton: {
-    padding: 4,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "#f8fafc",
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
+  backButton: { padding: 4 },
+  headerTitle: { fontSize: 18, fontWeight: "bold", color: "#334155" },
+  clearButton: { padding: 4 },
+  container: { flex: 1, backgroundColor: "#f8fafc" },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 40 },
+
   // Delivery Card
   deliveryCard: {
     backgroundColor: "#FFFFFF",
@@ -832,16 +765,8 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 16,
     borderWidth: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  deliveryHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+  deliveryHeader: { flexDirection: "row", alignItems: "center" },
   deliveryIconContainer: {
     width: 44,
     height: 44,
@@ -851,19 +776,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
-  deliveryText: {
-    flex: 1,
-  },
-  deliveryLabel: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#334155",
-  },
-  deliveryTime: {
-    fontSize: 13,
-    color: "#666666",
-    marginTop: 2,
-  },
+  deliveryText: { flex: 1 },
+  deliveryLabel: { fontSize: 16, fontWeight: "bold", color: "#334155" },
+  deliveryTime: { fontSize: 13, color: "#666666", marginTop: 2 },
   deliveryTimer: {
     flexDirection: "row",
     alignItems: "center",
@@ -873,36 +788,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 4,
   },
-  deliveryTimerText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  deliveryCutoff: {
-    fontSize: 12,
-    color: "#999999",
-    marginTop: 8,
-    marginLeft: 56,
-  },
-  // Info Card
-  infoCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fef3c7",
-    padding: 14,
-    borderRadius: 12,
-    marginTop: 16,
-    gap: 10,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    color: "#334155",
-    lineHeight: 18,
-  },
+  deliveryTimerText: { fontSize: 12, fontWeight: "600" },
+
   // Input Area
-  inputContainer: {
-    marginTop: 16,
-  },
+  inputContainer: { marginTop: 16 },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
@@ -911,17 +800,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e5e5e5",
     paddingLeft: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  input: {
+  input: { flex: 1.5, paddingVertical: 14, fontSize: 16, color: "#334155" },
+  inputPrice: {
     flex: 1,
     paddingVertical: 14,
-    fontSize: 16,
+    fontSize: 15,
     color: "#334155",
+    borderLeftWidth: 1,
+    borderLeftColor: "#f0f0f0",
+    paddingLeft: 10,
   },
   addButton: {
     backgroundColor: colors.lime,
@@ -932,31 +820,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     margin: 4,
   },
-  addButtonDisabled: {
-    backgroundColor: "#cccccc",
-  },
+  addButtonDisabled: { backgroundColor: "#cccccc" },
+
   // List Section
-  listSection: {
-    marginTop: 20,
-  },
+  listSection: { marginTop: 20 },
   listHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
   },
-  listTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#334155",
-  },
-  listCount: {
-    fontSize: 13,
-    color: "#666666",
-  },
-  listContent: {
-    gap: 8,
-  },
+  listTitle: { fontSize: 16, fontWeight: "bold", color: "#334155" },
+  listCount: { fontSize: 13, color: "#666666" },
+  listContent: { gap: 8 },
   listItem: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -969,11 +845,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  itemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
+  itemLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
   itemNumber: {
     width: 24,
     height: 24,
@@ -983,30 +855,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 10,
   },
-  itemNumberText: {
-    fontSize: 12,
-    fontWeight: "bold",
-    color: colors.lime,
-  },
-  itemName: {
+  itemNumberText: { fontSize: 12, fontWeight: "bold", color: colors.lime },
+  itemInputs: { flex: 1, gap: 4 },
+  editableName: {
     fontSize: 15,
     color: "#334155",
-    flex: 1,
+    fontWeight: "500",
+    padding: 0,
   },
-  itemRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
+  editablePrice: { fontSize: 13, color: "#666", padding: 0 },
+  itemRight: { flexDirection: "row", alignItems: "center", gap: 12 },
   quantityControls: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#f8fafc",
     borderRadius: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
   },
   quantityButton: {
-    width: 50,
+    width: 34,
     height: 28,
     justifyContent: "center",
     alignItems: "center",
@@ -1018,31 +885,26 @@ const styles = StyleSheet.create({
     minWidth: 20,
     textAlign: "center",
   },
-  removeButton: {
-    padding: 4,
+  removeButton: { padding: 4 },
+  itemFooter: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#f8fafc",
+    alignItems: "flex-end",
   },
-  // Empty State
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 40,
-  },
+  itemTotalText: { fontSize: 13, fontWeight: "600", color: colors.lime },
+
+  emptyState: { alignItems: "center", paddingVertical: 40 },
   emptyStateTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#334155",
     marginTop: 12,
   },
-  emptyStateSubtitle: {
-    fontSize: 14,
-    color: "#666666",
-    textAlign: "center",
-    marginTop: 4,
-    paddingHorizontal: 20,
-  },
-  // Note Container
-  noteContainer: {
-    marginTop: 16,
-  },
+
+  // Note & Submit
+  noteContainer: { marginTop: 16 },
   noteInput: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -1051,16 +913,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 14,
-    color: "#334155",
     minHeight: 80,
     textAlignVertical: "top",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  // Submit Button
   submitButton: {
     flexDirection: "row",
     backgroundColor: colors.lime,
@@ -1070,220 +925,50 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 20,
     gap: 8,
-    shadowColor: colors.lime,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
   },
-  submitButtonDisabled: {
-    backgroundColor: "#cccccc",
-    shadowOpacity: 0,
-  },
-  submitButtonText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-  },
-  bottomSpacing: {
-    height: 20,
-  },
-  // Confirmation Modal
-  confirmationOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-  confirmationCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    width: "100%",
-    maxHeight: "80%",
-    padding: 20,
-  },
-  confirmationHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-    paddingBottom: 12,
-    marginBottom: 16,
-  },
-  confirmationTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#334155",
-  },
-  confirmationClose: {
-    padding: 4,
-  },
-  confirmationContent: {
-    flexGrow: 1,
-  },
-  confirmationSection: {
-    marginBottom: 16,
-  },
-  confirmationLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#334155",
-    marginBottom: 8,
-  },
-  confirmationItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f8fafc",
-  },
-  confirmationItemName: {
-    fontSize: 14,
-    color: "#334155",
-  },
-  confirmationItemQty: {
-    fontSize: 14,
-    color: "#666666",
-  },
-  confirmationNote: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: "#f0f9ff",
-    padding: 12,
-    borderRadius: 8,
-    gap: 8,
-    marginTop: 8,
-  },
-  confirmationNoteText: {
-    flex: 1,
-    fontSize: 13,
-    color: "#0ea5e9",
-    lineHeight: 18,
-  },
-  confirmationDelivery: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f8fafc",
-    padding: 10,
-    borderRadius: 8,
-    gap: 8,
-  },
-  confirmationDeliveryText: {
-    fontSize: 14,
-    color: "#334155",
-  },
-  confirmationActions: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
-  },
-  confirmationButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 10,
-    gap: 6,
-  },
-  confirmationCancel: {
-    backgroundColor: "#f8fafc",
-    borderWidth: 1,
-    borderColor: "#e5e5e5",
-  },
-  confirmationCancelText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#334155",
-  },
-  confirmationConfirm: {
-    backgroundColor: colors.lime,
-  },
-  confirmationConfirmText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  // Add these styles to your StyleSheet
-  // Modal Styles
+  submitButtonDisabled: { backgroundColor: "#cccccc" },
+  submitButtonText: { fontSize: 16, fontWeight: "bold", color: "#FFFFFF" },
+  bottomSpacing: { height: 20 },
+
+  // Redesigned Modals (Web-Safe & Scalable)
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
   },
   modalContainer: {
     backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    minHeight: 350,
-    maxHeight: "80%",
-    paddingBottom: 30,
+    borderRadius: 24,
+    width: "100%",
+    maxWidth: 500,
+    paddingBottom: 20,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#334155",
-  },
-  modalCloseButton: {
-    padding: 4,
-  },
-  modalKeyboardView: {
-    flex: 1,
-  },
-  modalContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    flex: 1,
-  },
-  // Destination Input
-  destinationInputWrapper: {
-    marginBottom: 16,
-  },
+  modalTitle: { fontSize: 18, fontWeight: "bold", color: "#334155" },
+  modalContent: { padding: 20 },
+
   destinationInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: "#e5e5e5",
     borderRadius: 12,
     backgroundColor: "#f8fafc",
     paddingHorizontal: 16,
-    minHeight: 56,
+    height: 56,
+    marginBottom: 16,
   },
-  destinationIcon: {
-    marginRight: 12,
-  },
-  destinationInput: {
-    flex: 1,
-    paddingVertical: 16,
-    fontSize: 16,
-    color: "#334155",
-  },
-  destinationHint: {
-    fontSize: 12,
-    color: "#ef4444",
-    marginTop: 6,
-    marginLeft: 4,
-  },
-  // Info Card
+  destinationIcon: { marginRight: 12 },
+  destinationInput: { flex: 1, fontSize: 16, color: "#334155" },
   destinationInfoCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -1291,20 +976,11 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     gap: 10,
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  destinationInfoText: {
-    flex: 1,
-    fontSize: 13,
-    color: "#0ea5e9",
-    lineHeight: 18,
-  },
-  // Action Buttons
-  destinationActions: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 20,
-  },
+  destinationInfoText: { flex: 1, fontSize: 13, color: "#0ea5e9" },
+
+  destinationActions: { flexDirection: "row", gap: 12, paddingHorizontal: 20 },
   destinationButton: {
     flex: 1,
     flexDirection: "row",
@@ -1319,48 +995,106 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e5e5e5",
   },
-  destinationCancelText: {
-    fontSize: 16,
+  destinationCancelText: { fontSize: 15, fontWeight: "600", color: "#334155" },
+  destinationNextButton: { backgroundColor: colors.lime },
+  destinationButtonDisabled: { backgroundColor: "#ccc" },
+  destinationNextText: { fontSize: 15, fontWeight: "600", color: "#FFF" },
+
+  confirmationLabel: {
+    fontSize: 14,
     fontWeight: "600",
-    color: "#334155",
+    color: "#94a3b8",
+    marginBottom: 8,
   },
-  destinationNextButton: {
-    backgroundColor: colors.lime,
-    shadowColor: colors.lime,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  destinationButtonDisabled: {
-    backgroundColor: "#cccccc",
-    shadowOpacity: 0,
-  },
-  destinationNextText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  // Delivery Info
-  deliveryInfoContainer: {
+  confirmationItem: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: "#f8fafc",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f8fafc",
+  },
+  confirmationItemName: { fontSize: 15, color: "#334155", fontWeight: "500" },
+  confirmationItemQty: { fontSize: 14, color: "#64748b" },
+  confirmationTotalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#f0f0f0",
+    marginTop: 8,
   },
-  deliveryInfoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  deliveryInfoLabel: {
-    fontSize: 13,
+  confirmationTotalLabel: {
+    fontSize: 16,
+    fontWeight: "bold",
     color: "#334155",
-    fontWeight: "500",
   },
+  confirmationTotalValue: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: colors.lime,
+  },
+  confirmationNote: {
+    backgroundColor: "#f8fafc",
+    padding: 12,
+    borderRadius: 8,
+    fontSize: 14,
+    color: "#334155",
+  },
+  confirmationNoteCard: {
+    flexDirection: "row",
+    backgroundColor: "#f0f9ff",
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  confirmationNoteText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#0ea5e9",
+    lineHeight: 18,
+  },
+
+  // Custom Alert Specifics
+  alertBox: {
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    padding: 24,
+    width: "100%",
+    maxWidth: 350,
+    alignItems: "center",
+  },
+  alertTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1e293b",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  alertMessage: {
+    fontSize: 15,
+    color: "#475569",
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  alertActions: { flexDirection: "row", gap: 12, width: "100%" },
+  alertBtnCancel: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    alignItems: "center",
+  },
+  alertBtnCancelText: { color: "#475569", fontWeight: "600", fontSize: 15 },
+  alertBtnConfirm: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: colors.lime,
+    alignItems: "center",
+  },
+  alertBtnConfirmText: { color: "#FFF", fontWeight: "600", fontSize: 15 },
 });
 
 export default BuyChapChapScreen;

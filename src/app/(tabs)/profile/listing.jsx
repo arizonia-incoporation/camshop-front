@@ -515,9 +515,9 @@ const ListingScreen = () => {
           </ScrollView>
         )}
       </View>
-      <View style={styles.listContent}>
+      {/* <View style={styles.listContent}> */}
         {type === "chapchap" && <ChapChapScreen type={type} />}
-      </View>
+      {/* </View> */}
 
       {/* Content */}
       {type !== "chapchap" && loading && (

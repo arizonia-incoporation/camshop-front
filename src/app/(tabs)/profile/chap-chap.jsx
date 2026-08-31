@@ -1,4 +1,3 @@
-// app/(profile)/chap-chap/[id].js
 import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
@@ -14,6 +13,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AppCalls from "../../../utils/network";
 import { useAuth } from "../../../context/AuthContext";
+// Adjust the import path to wherever your showToast function is exported
+import { showToast } from "../../../utils/toast";
 
 // ==========================================
 // 1. WEB-SAFE CONFIRMATION MODAL
@@ -78,18 +79,33 @@ const EditItemModal = ({
   useEffect(() => {
     if (item) {
       setFormData({
-        name: item.name,
-        quantity: String(item.quantity),
-        estimatedTotal: String(item.estimatedTotal),
-        actualTotal: item.actualTotal !== null ? String(item.actualTotal) : "",
+        name: item.name || "",
+        quantity: String(item.quantity || "1"),
+        estimatedTotal: String(item.estimatedTotal || "0"),
+        actualTotal:
+          item.actualTotal !== null && item.actualTotal !== undefined
+            ? String(item.actualTotal)
+            : "",
       });
     }
   }, [item]);
 
-  const canUserEdit = userRole === "user" && orderStatus === "PENDING";
+  const role = userRole?.toUpperCase() || "USER";
+  const status = orderStatus?.toUpperCase();
+
+  const canUserEdit = role === "USER" && status === "PENDING";
   const canTransporterEdit =
-    (userRole === "deliverer" || userRole === "transporter") &&
-    orderStatus === "PROCESSING";
+    (role === "DELIVERER" || role === "TRANSPORTER") && status === "PROCESSING";
+
+  const hasChanges = item
+    ? formData.name !== item.name ||
+      formData.quantity !== String(item.quantity) ||
+      formData.estimatedTotal !== String(item.estimatedTotal) ||
+      formData.actualTotal !==
+        (item.actualTotal !== null && item.actualTotal !== undefined
+          ? String(item.actualTotal)
+          : "")
+    : false;
 
   const handleSave = () => {
     onSave({
@@ -99,6 +115,15 @@ const EditItemModal = ({
       actualTotal: formData.actualTotal ? parseInt(formData.actualTotal) : null,
     });
   };
+
+  const getInputStyle = (isEditable) => [
+    styles.input,
+    !isEditable && {
+      backgroundColor: "#f1f5f9",
+      color: "#94a3b8",
+      borderColor: "#e2e8f0",
+    },
+  ];
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -113,7 +138,7 @@ const EditItemModal = ({
 
           <Text style={styles.inputLabel}>Item Name</Text>
           <TextInput
-            style={styles.input}
+            style={getInputStyle(canUserEdit)}
             value={formData.name}
             onChangeText={(t) => setFormData({ ...formData, name: t })}
             editable={canUserEdit}
@@ -121,7 +146,7 @@ const EditItemModal = ({
 
           <Text style={styles.inputLabel}>Quantity</Text>
           <TextInput
-            style={styles.input}
+            style={getInputStyle(canUserEdit)}
             value={formData.quantity}
             keyboardType="numeric"
             onChangeText={(t) => setFormData({ ...formData, quantity: t })}
@@ -130,7 +155,7 @@ const EditItemModal = ({
 
           <Text style={styles.inputLabel}>Estimated Price (UGX)</Text>
           <TextInput
-            style={styles.input}
+            style={getInputStyle(canUserEdit)}
             value={formData.estimatedTotal}
             keyboardType="numeric"
             onChangeText={(t) =>
@@ -145,7 +170,7 @@ const EditItemModal = ({
                 Actual Price (UGX) - Transporter Only
               </Text>
               <TextInput
-                style={styles.input}
+                style={getInputStyle(true)}
                 value={formData.actualTotal}
                 keyboardType="numeric"
                 placeholder="Enter actual price found"
@@ -157,9 +182,12 @@ const EditItemModal = ({
           )}
 
           <TouchableOpacity
-            style={styles.saveBtn}
+            style={[
+              styles.saveBtn,
+              (!hasChanges || loading) && { backgroundColor: "#cccccc" },
+            ]}
             onPress={handleSave}
-            disabled={loading}
+            disabled={!hasChanges || loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -197,7 +225,6 @@ const DeliveryActionModal = ({
               <Ionicons name="close" size={24} color="#333" />
             </TouchableOpacity>
           </View>
-
           <Text style={styles.inputLabel}>Delivery Fee (UGX)</Text>
           <TextInput
             style={styles.input}
@@ -206,7 +233,6 @@ const DeliveryActionModal = ({
             placeholder="e.g., 5000"
             onChangeText={setFee}
           />
-
           <Text style={styles.inputLabel}>Delivery Note / Comments</Text>
           <TextInput
             style={[styles.input, { height: 80 }]}
@@ -266,7 +292,6 @@ const ItemCard = ({
           />
         </TouchableOpacity>
       )}
-
       <View style={styles.itemLeft}>
         <Text style={styles.itemNumber}>{index + 1}.</Text>
         <View>
@@ -276,9 +301,7 @@ const ItemCard = ({
           <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
         </View>
       </View>
-
       <View style={styles.itemRight}>
-        {/* Price Display Logic */}
         {isUnavailable ? (
           <Text style={styles.itemUnavailable}>Out of Stock</Text>
         ) : (
@@ -299,8 +322,6 @@ const ItemCard = ({
             )}
           </>
         )}
-
-        {/* Status Icon */}
         {isFound && (
           <Ionicons
             name="checkmark-circle"
@@ -329,8 +350,6 @@ export default function ChapChapOrderScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
-
-  // Replace this with actual role if 'deliverer' is used instead of 'transporter'
   const userRole = user?.role || "user";
 
   const [order, setOrder] = useState(null);
@@ -338,7 +357,6 @@ export default function ChapChapOrderScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState([]);
 
-  // Modal States
   const [editItem, setEditItem] = useState(null);
   const [feeModalVisible, setFeeModalVisible] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({
@@ -347,53 +365,46 @@ export default function ChapChapOrderScreen() {
     message: "",
     onConfirm: null,
   });
+  const [timeAgo, setTimeAgo] = useState("");
 
   useEffect(() => {
-    loadOrder();
+    updateTimeAgo();
+    const interval = setInterval(updateTimeAgo, 60000);
+    return () => clearInterval(interval);
+  }, [order?.createdAt]);
+
+  const updateTimeAgo = () => {
+    const now = new Date();
+    const orderDate = new Date(order?.createdAt);
+    const diffInSeconds = Math.floor((now - orderDate) / 1000);
+
+    if (diffInSeconds < 60) setTimeAgo("Just now");
+    else if (diffInSeconds < 3600)
+      setTimeAgo(`${Math.floor(diffInSeconds / 60)}m ago`);
+    else if (diffInSeconds < 86400)
+      setTimeAgo(`${Math.floor(diffInSeconds / 3600)}h ago`);
+    else if (diffInSeconds < 172800) setTimeAgo("Yesterday");
+    else setTimeAgo(`${Math.floor(diffInSeconds / 86400)}d ago`);
+  };
+  
+
+  useEffect(() => {
+    loadOrder(true);
   }, [id]);
 
-  const loadOrder = async () => {
+  const loadOrder = async (isInitialLoad = false) => {
     try {
-      setLoading(true);
-      // TODO: Replace with your actual GET endpoint
-      // const response = await AppCalls.get(`/order/chap/${id}`);
-      // setOrder(response.data);
-
-      // Mock Data for UI testing
-      setOrder({
-        id,
-        status: "PROCESSING",
-        location: "Main Campus Hostel",
-        note: "Please get fresh tomatoes",
-        createdAt: new Date().toISOString(),
-        delivery: { fees: 0, note: "" },
-        items: [
-          {
-            id: "1",
-            name: "Tomatoes",
-            quantity: 5,
-            estimatedTotal: 5000,
-            actualTotal: null,
-            status: "PENDING",
-          },
-          {
-            id: "2",
-            name: "Onions",
-            quantity: 2,
-            estimatedTotal: 2000,
-            actualTotal: null,
-            status: "PENDING",
-          },
-        ],
-      });
+      if (isInitialLoad) setLoading(true);
+      const response = await AppCalls.get(`/order/chap/${id}`);
+      setOrder(response.data.data || response.data);
     } catch (error) {
       console.error(error);
+      showToast("error", "Error", "Failed to load order details.");
     } finally {
-      setLoading(false);
+      if (isInitialLoad) setLoading(false);
     }
   };
 
-  // Dynamic Totals Calculation
   const totals = useMemo(() => {
     if (!order) return { itemsTotal: 0, grandTotal: 0 };
     const itemsTotal = order.items.reduce((sum, item) => {
@@ -418,31 +429,23 @@ export default function ChapChapOrderScreen() {
   const handleBulkAction = async (status) => {
     try {
       setActionLoading(true);
-      // TODO: Call API for bulk update
-      // await AppCalls.put(`/order/chap/${order.id}/bulk-items`, { itemIds: selectedItemIds, status });
-
-      // Local State Update (Simulated)
-      setOrder((prev) => ({
-        ...prev,
-        items: prev.items.map((item) => {
-          if (selectedItemIds.includes(item.id)) {
-            return {
-              ...item,
-              status,
-              actualTotal:
-                status === "FOUND"
-                  ? item.estimatedTotal
-                  : status === "UNAVAILABLE"
-                    ? 0
-                    : null,
-            };
-          }
-          return item;
-        }),
-      }));
+      await AppCalls.patch(`/order/chap/${order.id}/bulk-items`, {
+        itemIds: selectedItemIds,
+        status,
+      });
+      showToast(
+        "success",
+        "Success",
+        `Items marked as ${status.toLowerCase()}`,
+      );
       setSelectedItemIds([]);
+      await loadOrder();
     } catch (error) {
-      console.error(error);
+      showToast(
+        "error",
+        "Error",
+        error?.response?.data?.message || "Failed to update items",
+      );
     } finally {
       setActionLoading(false);
     }
@@ -452,26 +455,25 @@ export default function ChapChapOrderScreen() {
     try {
       setActionLoading(true);
       const isTransporter =
-        userRole === "deliverer" || userRole === "transporter";
+        userRole === "deliverer" || userRole === "TRANSPORTER";
       const newStatus =
         isTransporter && updatedData.actualTotal !== null
           ? "FOUND"
           : editItem.status;
 
-      // TODO: API Call
-      // await AppCalls.put(`/order/chap/${order.id}/item/${editItem.id}`, { ...updatedData, status: newStatus });
-
-      setOrder((prev) => ({
-        ...prev,
-        items: prev.items.map((i) =>
-          i.id === editItem.id
-            ? { ...i, ...updatedData, status: newStatus }
-            : i,
-        ),
-      }));
+      await AppCalls.patch(`/order/chap/${order.id}/item/${editItem.id}`, {
+        ...updatedData,
+        status: newStatus,
+      });
+      showToast("success", "Success", "Item updated successfully");
       setEditItem(null);
+      await loadOrder();
     } catch (error) {
-      console.error(error);
+      showToast(
+        "error",
+        "Error",
+        error?.response?.data?.message || "Failed to save item",
+      );
     } finally {
       setActionLoading(false);
     }
@@ -480,16 +482,19 @@ export default function ChapChapOrderScreen() {
   const handleSaveDeliveryDetails = async (fees, note) => {
     try {
       setActionLoading(true);
-      // TODO: API Call
-      // await AppCalls.put(`/order/chap/${order.id}/delivery`, { fees, note });
-
-      setOrder((prev) => ({
-        ...prev,
-        delivery: { ...prev.delivery, fees, note },
-      }));
+      await AppCalls.patch(`/order/chap/${order.id}/delivery-info`, {
+        fees,
+        note,
+      });
+      showToast("success", "Success", "Delivery details updated");
       setFeeModalVisible(false);
+      await loadOrder();
     } catch (error) {
-      console.error(error);
+      showToast(
+        "error",
+        "Error",
+        error?.response?.data?.message || "Failed to save delivery details",
+      );
     } finally {
       setActionLoading(false);
     }
@@ -515,33 +520,46 @@ export default function ChapChapOrderScreen() {
     );
   }
 
-  const isTransporter = userRole === "deliverer" || userRole === "transporter";
+  const isTransporter =
+    userRole.toUpperCase() === "DELIVERER" ||
+    userRole.toUpperCase() === "TRANSPORTER";
   const canBulkSelect = isTransporter && order.status === "PROCESSING";
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#334155" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Order Details</Text>
+        <View style={{ width: 24 }} /> {/* Empty spacer for clean alignment */}
+      </View>
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* HEADER SUMMARY */}
         <View style={styles.summaryCard}>
-          <Text style={styles.orderIdText}>
-            Order #{order.id.slice(0, 6).toUpperCase()}
-          </Text>
-          <View style={styles.statusBadge}>
-            <Text style={styles.statusText}>{order.status}</Text>
+          <View style={styles.summaryHeadCard}>
+            <Text style={styles.orderIdText}>
+              Order #{order.id.slice(0, 6).toUpperCase()}
+            </Text>
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusText}>{order.status}</Text>
+            </View>
           </View>
+          <Text style={styles.locationText}>
+            <Ionicons name="time-outline" /> {timeAgo}
+          </Text>
           <Text style={styles.locationText}>
             <Ionicons name="location" /> {order.location}
           </Text>
-
-          {/* User Note */}
           {order.note && (
             <View style={styles.noteBox}>
               <Text style={styles.noteLabel}>User Note:</Text>
               <Text style={styles.noteText}>{order.note}</Text>
             </View>
           )}
-
-          {/* Transporter Note */}
           {order.delivery?.note && (
             <View
               style={[
@@ -555,7 +573,6 @@ export default function ChapChapOrderScreen() {
           )}
         </View>
 
-        {/* ITEMS LIST */}
         <Text style={styles.sectionTitle}>Shopping List</Text>
         {order.items.map((item, index) => (
           <ItemCard
@@ -569,7 +586,6 @@ export default function ChapChapOrderScreen() {
           />
         ))}
 
-        {/* PRICING SUMMARY */}
         <View style={styles.pricingCard}>
           <Text style={styles.sectionTitle}>Summary</Text>
           <View style={styles.priceRow}>
@@ -593,7 +609,6 @@ export default function ChapChapOrderScreen() {
           </View>
         </View>
 
-        {/* ACTIONS */}
         <View style={styles.actionContainer}>
           {isTransporter && order.status === "PROCESSING" && (
             <TouchableOpacity
@@ -611,8 +626,23 @@ export default function ChapChapOrderScreen() {
                 showConfirm(
                   "Accept Order",
                   "Do you want to accept this order?",
-                  () => {
-                    /* API Call to Accept */
+                  async () => {
+                    try {
+                      await AppCalls.patch(`/order/chap/${order.id}/accept`);
+                      showToast(
+                        "success",
+                        "Accepted",
+                        "You have successfully accepted the order.",
+                      );
+                      await loadOrder();
+                    } catch (error) {
+                      showToast(
+                        "error",
+                        "Error",
+                        error?.response?.data?.message ||
+                          "Failed to accept order",
+                      );
+                    }
                   },
                 )
               }
@@ -631,8 +661,23 @@ export default function ChapChapOrderScreen() {
                 showConfirm(
                   "Mark Delivered",
                   "Are you sure this order is delivered?",
-                  () => {
-                    /* API Call to Deliver */
+                  async () => {
+                    try {
+                      await AppCalls.patch(`/order/chap/${order.id}/deliver`);
+                      showToast(
+                        "success",
+                        "Delivered",
+                        "Order has been marked as delivered.",
+                      );
+                      await loadOrder();
+                    } catch (error) {
+                      showToast(
+                        "error",
+                        "Error",
+                        error?.response?.data?.message ||
+                          "Failed to mark as delivered",
+                      );
+                    }
                   },
                 )
               }
@@ -643,7 +688,6 @@ export default function ChapChapOrderScreen() {
         </View>
       </ScrollView>
 
-      {/* FLOATING BULK ACTION BAR */}
       {selectedItemIds.length > 0 && (
         <View style={styles.floatingBar}>
           <Text style={styles.floatingText}>
@@ -668,26 +712,23 @@ export default function ChapChapOrderScreen() {
         </View>
       )}
 
-      {/* MODALS */}
       <EditItemModal
         visible={!!editItem}
         item={editItem}
         userRole={userRole}
-        orderStatus={order.status}
+        orderStatus={order?.status}
         onClose={() => setEditItem(null)}
         onSave={handleSaveItem}
         loading={actionLoading}
       />
-
       <DeliveryActionModal
         visible={feeModalVisible}
-        initialFee={order.delivery?.fees}
-        initialNote={order.delivery?.note}
+        initialFee={order?.delivery?.fees}
+        initialNote={order?.delivery?.note}
         onClose={() => setFeeModalVisible(false)}
         onSave={handleSaveDeliveryDetails}
         loading={actionLoading}
       />
-
       <ConfirmationModal
         visible={confirmConfig.visible}
         title={confirmConfig.title}
@@ -700,14 +741,31 @@ export default function ChapChapOrderScreen() {
   );
 }
 
-// ==========================================
-// STYLES
-// ==========================================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8fafc" },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+  // Header styles
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  backButton: { padding: 4 },
+  headerTitle: { fontSize: 17, fontWeight: "bold", color: "#334155" },
+
   scrollContent: { padding: 16, paddingBottom: 100 },
 
+  summaryHeadCard: {
+    flex: 1,
+    justifyContent: "space-between",
+    flexDirection: "row"
+  },
   summaryCard: {
     backgroundColor: "#fff",
     padding: 16,
@@ -748,7 +806,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   noteText: { fontSize: 14, color: "#b45309" },
-
   sectionTitle: {
     fontSize: 16,
     fontWeight: "bold",
@@ -756,7 +813,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  // Item Card
   itemCard: {
     flexDirection: "row",
     backgroundColor: "#fff",
@@ -789,7 +845,6 @@ const styles = StyleSheet.create({
   itemActual: { fontSize: 15, fontWeight: "bold", color: "#22c55e" },
   itemUnavailable: { fontSize: 14, fontWeight: "bold", color: "#ef4444" },
 
-  // Pricing Summary
   pricingCard: {
     backgroundColor: "#fff",
     padding: 16,
@@ -809,12 +864,10 @@ const styles = StyleSheet.create({
   priceLabelTotal: { fontSize: 16, fontWeight: "bold", color: "#0f172a" },
   priceValueTotal: { fontSize: 18, fontWeight: "bold", color: "#f59e0b" },
 
-  // Actions
   actionContainer: { marginTop: 24 },
   btn: { padding: 16, borderRadius: 10, alignItems: "center" },
   btnText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
 
-  // Floating Bulk Bar
   floatingBar: {
     position: "absolute",
     bottom: 20,
@@ -835,18 +888,19 @@ const styles = StyleSheet.create({
   floatingActions: { flexDirection: "row", gap: 8 },
   bulkBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
 
-  // Modals shared
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   bottomSheet: {
     backgroundColor: "#fff",
     padding: 20,
     borderRadius: 16,
-    marginTop: "auto",
+    width: "100%",
+    maxWidth: 450, 
   },
   sheetHeader: {
     flexDirection: "row",
@@ -878,11 +932,12 @@ const styles = StyleSheet.create({
   },
   saveBtnText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 
-  // Alert Box
   alertBox: {
     backgroundColor: "#fff",
     padding: 24,
     borderRadius: 16,
+    width: "100%",
+    maxWidth: 400,
     alignItems: "center",
   },
   alertTitle: {
