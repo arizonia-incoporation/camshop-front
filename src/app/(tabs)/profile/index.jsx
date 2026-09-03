@@ -83,21 +83,22 @@ const DashboardScreen = () => {
   const loadOrders = async (role) => {
     try {
       const res = await AppCalls.get("/order?role=" + role);
-      
+
       // Safely unwrap regardless of API shape
       const result = res?.items || res?.data?.items || [];
       const pendingOrders = result.filter(
-        (item) => item.status === "PENDING"
+        (item) => item.status === "PENDING",
       ).length;
-      
+
       const statis = {
-        orders: res?.pagination?.totalItems || res?.data?.pagination?.totalItems || 0,
+        orders:
+          res?.pagination?.totalItems || res?.data?.pagination?.totalItems || 0,
         revenue: 3420000,
         pendingOrders: pendingOrders,
       };
-      
+
       const recentOrders = result.length > 0 ? result.splice(0, 5) : [];
-      
+
       setData((prev) => ({
         ...prev,
         recentOrders,
@@ -117,19 +118,19 @@ const DashboardScreen = () => {
         role.toLocaleLowerCase() === "vendor"
           ? "/vendors/" + (user?.vendor?.id || "")
           : "/products";
-          
+
       const res = await AppCalls.get(url);
-      
+
       const result = res?.products || res?.data?.products || [];
       const products = result.length > 0 ? result.splice(0, 5) : [];
-      
+
       setData((c) => ({
         ...c,
         products,
-        stats: { 
-          ...c.stats, 
+        stats: {
+          ...c.stats,
           // Safely target the count object without crashing
-          products: res?._count?.products || res?.data?._count?.products || 0 
+          products: res?._count?.products || res?.data?._count?.products || 0,
         },
       }));
     } catch (error) {
@@ -149,7 +150,8 @@ const DashboardScreen = () => {
   };
 
   const getInitials = (name) => {
-    return name?.split(" ")
+    return name
+      ?.split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase();
@@ -259,9 +261,13 @@ const DashboardScreen = () => {
           <PaymentMethodsBanner />
 
           {/* Quick Actions */}
-          <View style={styles.section}>
+          <View style={[styles.section, {marginTop: 10}]}>
             <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.quickActions}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.quickActions}
+            >
               <TouchableOpacity
                 style={styles.quickAction}
                 onPress={() => navigation.push("/home")}
@@ -276,6 +282,7 @@ const DashboardScreen = () => {
                 </View>
                 <Text style={styles.quickActionLabel}>Shop</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.quickAction}
                 onPress={() => navigation.navigate("/cart")}
@@ -290,6 +297,7 @@ const DashboardScreen = () => {
                 </View>
                 <Text style={styles.quickActionLabel}>Cart</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.quickAction}
                 onPress={() => navigation.navigate("/profile/listing")}
@@ -304,6 +312,7 @@ const DashboardScreen = () => {
                 </View>
                 <Text style={styles.quickActionLabel}>Orders</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.quickAction}
                 onPress={() =>
@@ -326,6 +335,7 @@ const DashboardScreen = () => {
                 </View>
                 <Text style={styles.quickActionLabel}>Favourites</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 onPress={() =>
                   navigation.push({
@@ -348,6 +358,7 @@ const DashboardScreen = () => {
                 </View>
                 <Text style={styles.quickActionLabel}>ChapChap</Text>
               </TouchableOpacity>
+
               <TouchableOpacity onPress={logout} style={styles.quickAction}>
                 <View
                   style={[
@@ -359,6 +370,7 @@ const DashboardScreen = () => {
                 </View>
                 <Text style={styles.quickActionLabel}>Logout</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 onPress={() =>
                   navigation.push("/profile/(vendor)/registerVendor")
@@ -375,7 +387,7 @@ const DashboardScreen = () => {
                 </View>
                 <Text style={styles.quickActionLabel}>Start selling</Text>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           </View>
 
           {/* Recent Orders */}

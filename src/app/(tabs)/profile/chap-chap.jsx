@@ -1,3 +1,4 @@
+// app/(profile)/chap-chap/[id].js
 import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
@@ -8,12 +9,12 @@ import {
   ActivityIndicator,
   TextInput,
   Modal,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AppCalls from "../../../utils/network";
 import { useAuth } from "../../../context/AuthContext";
-// Adjust the import path to wherever your showToast function is exported
 import { showToast } from "../../../utils/toast";
 
 // ==========================================
@@ -38,7 +39,7 @@ const ConfirmationModal = ({
             onPress={onCancel}
             disabled={loading}
           >
-            <Text style={styles.alertBtnCancelText}>Cancel</Text>
+            <Text style={styles.alertBtnCancelText}>Go Back</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.alertBtnConfirm}
@@ -350,7 +351,12 @@ export default function ChapChapOrderScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const { user } = useAuth();
+
   const userRole = user?.role || "user";
+  const isUser = userRole.toUpperCase() === "USER";
+  const isTransporter =
+    userRole.toUpperCase() === "DELIVERER" ||
+    userRole.toUpperCase() === "TRANSPORTER";
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -365,28 +371,6 @@ export default function ChapChapOrderScreen() {
     message: "",
     onConfirm: null,
   });
-  const [timeAgo, setTimeAgo] = useState("");
-
-  useEffect(() => {
-    updateTimeAgo();
-    const interval = setInterval(updateTimeAgo, 60000);
-    return () => clearInterval(interval);
-  }, [order?.createdAt]);
-
-  const updateTimeAgo = () => {
-    const now = new Date();
-    const orderDate = new Date(order?.createdAt);
-    const diffInSeconds = Math.floor((now - orderDate) / 1000);
-
-    if (diffInSeconds < 60) setTimeAgo("Just now");
-    else if (diffInSeconds < 3600)
-      setTimeAgo(`${Math.floor(diffInSeconds / 60)}m ago`);
-    else if (diffInSeconds < 86400)
-      setTimeAgo(`${Math.floor(diffInSeconds / 3600)}h ago`);
-    else if (diffInSeconds < 172800) setTimeAgo("Yesterday");
-    else setTimeAgo(`${Math.floor(diffInSeconds / 86400)}d ago`);
-  };
-  
 
   useEffect(() => {
     loadOrder(true);
@@ -396,6 +380,7 @@ export default function ChapChapOrderScreen() {
     try {
       if (isInitialLoad) setLoading(true);
       const response = await AppCalls.get(`/order/chap/${id}`);
+      console.log(response);
       setOrder(response.data.data || response.data);
     } catch (error) {
       console.error(error);
@@ -429,7 +414,7 @@ export default function ChapChapOrderScreen() {
   const handleBulkAction = async (status) => {
     try {
       setActionLoading(true);
-      await AppCalls.patch(`/order/chap/${order.id}/bulk-items`, {
+      await AppCalls.put(`/order/chap/${order.id}/bulk-items`, {
         itemIds: selectedItemIds,
         status,
       });
@@ -454,14 +439,12 @@ export default function ChapChapOrderScreen() {
   const handleSaveItem = async (updatedData) => {
     try {
       setActionLoading(true);
-      const isTransporter =
-        userRole === "deliverer" || userRole === "TRANSPORTER";
       const newStatus =
         isTransporter && updatedData.actualTotal !== null
           ? "FOUND"
           : editItem.status;
 
-      await AppCalls.patch(`/order/chap/${order.id}/item/${editItem.id}`, {
+      await AppCalls.put(`/order/chap/${order.id}/item/${editItem.id}`, {
         ...updatedData,
         status: newStatus,
       });
@@ -482,7 +465,7 @@ export default function ChapChapOrderScreen() {
   const handleSaveDeliveryDetails = async (fees, note) => {
     try {
       setActionLoading(true);
-      await AppCalls.patch(`/order/chap/${order.id}/delivery-info`, {
+      await AppCalls.put(`/order/chap/${order.id}/delivery-info`, {
         fees,
         note,
       });
@@ -514,16 +497,27 @@ export default function ChapChapOrderScreen() {
     });
   };
 
+  const handleCallUser = () => {
+    if (isTransporter && order?.user?.contact) {
+      Linking.openURL(`tel:${order.user.contact}`).catch((err) =>
+        showToast("error", "Error", "Failed to open phone dialer."),
+      );
+    }
+  };
+
   if (loading || !order) {
     return (
       <ActivityIndicator size="large" color="#f59e0b" style={styles.centered} />
     );
   }
 
-  const isTransporter =
-    userRole.toUpperCase() === "DELIVERER" ||
-    userRole.toUpperCase() === "TRANSPORTER";
-  const canBulkSelect = isTransporter && order.status === "PROCESSING";
+  const orderStatus = order.status.toUpperCase();
+  const canBulkSelect = isTransporter && orderStatus === "PROCESSING";
+
+  const canUserCancel = isUser && orderStatus === "PENDING";
+  const canTransporterCancel =
+    isTransporter && orderStatus !== "DELIVERED" && orderStatus !== "CANCELLED";
+  const showCancelButton = canUserCancel || canTransporterCancel;
 
   return (
     <View style={styles.container}>
@@ -535,25 +529,21 @@ export default function ChapChapOrderScreen() {
           <Ionicons name="arrow-back" size={24} color="#334155" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Order Details</Text>
-        <View style={{ width: 24 }} /> {/* Empty spacer for clean alignment */}
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.summaryCard}>
-          <View style={styles.summaryHeadCard}>
-            <Text style={styles.orderIdText}>
-              Order #{order.id.slice(0, 6).toUpperCase()}
-            </Text>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>{order.status}</Text>
-            </View>
-          </View>
-          <Text style={styles.locationText}>
-            <Ionicons name="time-outline" /> {timeAgo}
+          <Text style={styles.orderIdText}>
+            Order #{order.id.slice(0, 6).toUpperCase()}
           </Text>
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusText}>{order.status}</Text>
+          </View>
           <Text style={styles.locationText}>
             <Ionicons name="location" /> {order.location}
           </Text>
+
           {order.note && (
             <View style={styles.noteBox}>
               <Text style={styles.noteLabel}>User Note:</Text>
@@ -569,6 +559,29 @@ export default function ChapChapOrderScreen() {
             >
               <Text style={styles.noteLabel}>Transporter Note:</Text>
               <Text style={styles.noteText}>{order.delivery.note}</Text>
+            </View>
+          )}
+
+          {/* NEW: Customer Info & Call Action */}
+          {isTransporter && order?.user && (
+            <View style={styles.customerInfoContainer}>
+              <View style={styles.customerDetailRow}>
+                <Ionicons name="person-outline" size={18} color="#64748b" />
+                <Text style={styles.customerNameText}>
+                  {order.user.username}
+                </Text>
+              </View>
+              {order.user.contact && (
+                <TouchableOpacity
+                  style={styles.contactButton}
+                  onPress={handleCallUser}
+                >
+                  <Ionicons name="call" size={18} color="#ffffff" />
+                  <Text style={styles.contactButtonText}>
+                    Call {order.user.contact}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
@@ -610,7 +623,7 @@ export default function ChapChapOrderScreen() {
         </View>
 
         <View style={styles.actionContainer}>
-          {isTransporter && order.status === "PROCESSING" && (
+          {isTransporter && orderStatus === "PROCESSING" && (
             <TouchableOpacity
               style={[styles.btn, { backgroundColor: "#0ea5e9" }]}
               onPress={() => setFeeModalVisible(true)}
@@ -619,16 +632,19 @@ export default function ChapChapOrderScreen() {
             </TouchableOpacity>
           )}
 
-          {isTransporter && order.status === "PENDING" && (
+          {isTransporter && orderStatus === "PENDING" && (
             <TouchableOpacity
-              style={[styles.btn, { backgroundColor: "#22c55e" }]}
+              style={[
+                styles.btn,
+                { backgroundColor: "#22c55e", marginTop: 10 },
+              ]}
               onPress={() =>
                 showConfirm(
                   "Accept Order",
                   "Do you want to accept this order?",
                   async () => {
                     try {
-                      await AppCalls.patch(`/order/chap/${order.id}/accept`);
+                      await AppCalls.put(`/order/chap/${order.id}/accept`);
                       showToast(
                         "success",
                         "Accepted",
@@ -651,7 +667,7 @@ export default function ChapChapOrderScreen() {
             </TouchableOpacity>
           )}
 
-          {isTransporter && order.status === "PROCESSING" && (
+          {isTransporter && orderStatus === "PROCESSING" && (
             <TouchableOpacity
               style={[
                 styles.btn,
@@ -663,7 +679,7 @@ export default function ChapChapOrderScreen() {
                   "Are you sure this order is delivered?",
                   async () => {
                     try {
-                      await AppCalls.patch(`/order/chap/${order.id}/deliver`);
+                      await AppCalls.put(`/order/chap/${order.id}/deliver`);
                       showToast(
                         "success",
                         "Delivered",
@@ -683,6 +699,41 @@ export default function ChapChapOrderScreen() {
               }
             >
               <Text style={styles.btnText}>Mark Delivered</Text>
+            </TouchableOpacity>
+          )}
+
+          {showCancelButton && (
+            <TouchableOpacity
+              style={[
+                styles.btn,
+                { backgroundColor: "#ef4444", marginTop: 10 },
+              ]}
+              onPress={() =>
+                showConfirm(
+                  "Cancel Order",
+                  "Are you sure you want to cancel this order? This action cannot be undone.",
+                  async () => {
+                    try {
+                      await AppCalls.put(`/order/chap/${order.id}/cancel`);
+                      showToast(
+                        "success",
+                        "Cancelled",
+                        "The order has been cancelled.",
+                      );
+                      await loadOrder();
+                    } catch (error) {
+                      showToast(
+                        "error",
+                        "Error",
+                        error?.response?.data?.message ||
+                          "Failed to cancel order",
+                      );
+                    }
+                  },
+                )
+              }
+            >
+              <Text style={styles.btnText}>Cancel Order</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -745,7 +796,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8fafc" },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
 
-  // Header styles
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -761,11 +811,6 @@ const styles = StyleSheet.create({
 
   scrollContent: { padding: 16, paddingBottom: 100 },
 
-  summaryHeadCard: {
-    flex: 1,
-    justifyContent: "space-between",
-    flexDirection: "row"
-  },
   summaryCard: {
     backgroundColor: "#fff",
     padding: 16,
@@ -806,6 +851,41 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   noteText: { fontSize: 14, color: "#b45309" },
+
+  // NEW: Customer Info Styles
+  customerInfoContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+    gap: 12,
+  },
+  customerDetailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  customerNameText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#334155",
+  },
+  contactButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#10b981",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 8,
+  },
+  contactButtonText: {
+    color: "#ffffff",
+    fontWeight: "bold",
+    fontSize: 15,
+  },
+
   sectionTitle: {
     fontSize: 16,
     fontWeight: "bold",
@@ -900,7 +980,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 16,
     width: "100%",
-    maxWidth: 450, 
+    maxWidth: 450,
   },
   sheetHeader: {
     flexDirection: "row",
@@ -966,7 +1046,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 14,
     borderRadius: 8,
-    backgroundColor: "#f59e0b",
+    backgroundColor: "#ef4444",
     alignItems: "center",
   },
   alertBtnConfirmText: { color: "#fff", fontWeight: "600" },

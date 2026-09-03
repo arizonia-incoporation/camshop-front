@@ -11,6 +11,7 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
@@ -48,7 +49,7 @@ const OrderItemCard = ({
   const [loading, setLoading] = useState({
     cancelling: false,
     confirming: false,
-    others: null
+    others: null,
   });
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -354,7 +355,7 @@ const OrderItemCard = ({
     }
 
     if (actionId === "reject") {
-      setLoading(str=>({...str,others:actionId}));
+      setLoading((str) => ({ ...str, others: actionId }));
       try {
         await AppCalls.patch(`/delivery/${normalizedOrder.id}/reject`);
         showToast(
@@ -370,13 +371,13 @@ const OrderItemCard = ({
           error?.message || "Could not reject this offer.",
         );
       } finally {
-        setLoading(str=>({...str,others:null}));
+        setLoading((str) => ({ ...str, others: null }));
       }
       return;
     }
 
     if (actionId === "pick_up" || actionId === "vendor_pick_up") {
-      setLoading(str=>({...str,others:actionId}));
+      setLoading((str) => ({ ...str, others: actionId }));
       try {
         await AppCalls.patch(`/delivery/${normalizedOrder.id}/status`, {
           status: "PICKED_UP",
@@ -450,6 +451,14 @@ const OrderItemCard = ({
         "info",
         "Not marked open",
         err?.message || "Could not mark order open automatically",
+      );
+    }
+  };
+console.log("normalizedOrder", normalizedOrder);
+  const handleCallUser = () => {
+    if (normalizedOrder.order?.user?.contact) {
+      Linking.openURL(`tel:${normalizedOrder.order.user.contact}`).catch((err) =>
+        showToast("error", "Error", "Failed to open phone dialer."),
       );
     }
   };
@@ -572,6 +581,28 @@ const OrderItemCard = ({
                   <Text style={styles.locationText}>
                     {normalizedOrder.order.location}
                   </Text>
+                </View>
+              )}
+
+              {normalizedOrder.order.user && (
+                <View style={styles.customerInfoContainer}>
+                  <View style={styles.customerDetailRow}>
+                    <Ionicons name="person-outline" size={18} color="#64748b" />
+                    <Text style={styles.customerNameText}>
+                      {normalizedOrder.order.user.username}
+                    </Text>
+                  </View>
+                  {normalizedOrder.order.user.contact && (
+                    <TouchableOpacity
+                      style={styles.contactButton}
+                      onPress={handleCallUser}
+                    >
+                      <Ionicons name="call" size={18} color="#ffffff" />
+                      <Text style={styles.contactButtonText}>
+                        Call {normalizedOrder.order.user.contact}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
 
@@ -1631,6 +1662,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+   // NEW: Customer Info Styles
+  customerInfoContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+    gap: 12,
+  },
+  customerDetailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  customerNameText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#334155",
+  },
+  contactButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#10b981",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 8,
+  },
+  contactButtonText: {
+    color: "#ffffff",
+    fontWeight: "bold",
+    fontSize: 15,
+  },
+
 });
 
 export default OrderItemCard;

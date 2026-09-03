@@ -33,10 +33,7 @@ export default function NotificationListScreen() {
     const notificationId = item?._id || item?.id;
     if (!notificationId) return;
 
-    navigation.push({
-      pathname: "/chat/[id]",
-      params: { id: String(notificationId) },
-    });
+    navigation.push(`/chat/${String(notificationId)}`);
 
     if (!item.isRead) {
       await markAsRead(notificationId);

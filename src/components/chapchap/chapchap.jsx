@@ -10,7 +10,6 @@ import {
   StatusBar,
   TouchableOpacity,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import ChapChapCard from "./ChapChapCard";
 import EmptyState from "../cards/emptyCard";
@@ -50,6 +49,7 @@ const ChapChapScreen = ({type}) => {
       }
 
       const data = response.data;
+      console.log(data.items);
 
       if (page === 1) {
         setOrders(data.items || []);
@@ -110,44 +110,44 @@ const ChapChapScreen = ({type}) => {
   }
 
   return (
-      <FlatList
-        data={orders}
-        renderItem={({ item }) => (
-          <ChapChapCard order={item} onPress={() => handleOrderPress(item)} />
-        )}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.3}
-        ListFooterComponent={
-          pagination.hasNextPage && (
-            <View style={styles.loadMoreContainer}>
-              <ActivityIndicator size="small" color="#f59e0b" />
-            </View>
-          )
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <EmptyState
-              icon="flash-outline"
-              title={`No ${title.toLowerCase()} yet`}
-              subtitle={
-                type === "chapchap"
-                  ? "You haven't created any Chap Chap orders. Start shopping quickly!"
-                  : "You haven't been assigned any Chap Chap deliveries yet."
-              }
-              buttonText={
-                type === "chapchap" ? "Create Chap Chap Order" : undefined
-              }
-              onButtonPress={() => navigation.push("/(home)/buy-chap-chap")}
-            />
+    <FlatList
+      data={orders}
+      renderItem={({ item }) => (
+        <ChapChapCard order={item} onPress={() => handleOrderPress(item)} />
+      )}
+      keyExtractor={(item) => item.id}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.listContent}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+      onEndReached={loadMore}
+      onEndReachedThreshold={0.3}
+      ListFooterComponent={
+        pagination.hasNextPage && (
+          <View style={styles.loadMoreContainer}>
+            <ActivityIndicator size="small" color="#f59e0b" />
           </View>
-        }
-      />
+        )
+      }
+      ListEmptyComponent={
+        <View style={styles.emptyContainer}>
+          <EmptyState
+            icon="flash-outline"
+            title={`No ${title.toLowerCase()} yet`}
+            subtitle={
+              type === "chapchap"
+                ? "You haven't created any Chap Chap orders. Start shopping quickly!"
+                : "You haven't been assigned any Chap Chap deliveries yet."
+            }
+            buttonText={
+              type === "chapchap" ? "Create Chap Chap Order" : undefined
+            }
+            onButtonPress={() => navigation.push("/(home)/BuyChapChap")}
+          />
+        </View>
+      }
+    />
   );
 };
 
