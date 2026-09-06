@@ -49,7 +49,6 @@ const ChapChapScreen = ({type}) => {
       }
 
       const data = response.data;
-      console.log(data.items);
 
       if (page === 1) {
         setOrders(data.items || []);

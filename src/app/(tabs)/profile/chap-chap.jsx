@@ -380,7 +380,6 @@ export default function ChapChapOrderScreen() {
     try {
       if (isInitialLoad) setLoading(true);
       const response = await AppCalls.get(`/order/chap/${id}`);
-      console.log(response);
       setOrder(response.data.data || response.data);
     } catch (error) {
       console.error(error);
@@ -414,7 +413,7 @@ export default function ChapChapOrderScreen() {
   const handleBulkAction = async (status) => {
     try {
       setActionLoading(true);
-      await AppCalls.put(`/order/chap/${order.id}/bulk-items`, {
+      await AppCalls.patch(`/order/chap/${order.id}/bulk-items`, {
         itemIds: selectedItemIds,
         status,
       });
@@ -444,7 +443,7 @@ export default function ChapChapOrderScreen() {
           ? "FOUND"
           : editItem.status;
 
-      await AppCalls.put(`/order/chap/${order.id}/item/${editItem.id}`, {
+      await AppCalls.patch(`/order/chap/${order.id}/item/${editItem.id}`, {
         ...updatedData,
         status: newStatus,
       });
@@ -465,7 +464,7 @@ export default function ChapChapOrderScreen() {
   const handleSaveDeliveryDetails = async (fees, note) => {
     try {
       setActionLoading(true);
-      await AppCalls.put(`/order/chap/${order.id}/delivery-info`, {
+      await AppCalls.patch(`/order/chap/${order.id}/delivery-info`, {
         fees,
         note,
       });
@@ -644,7 +643,7 @@ export default function ChapChapOrderScreen() {
                   "Do you want to accept this order?",
                   async () => {
                     try {
-                      await AppCalls.put(`/order/chap/${order.id}/accept`);
+                      await AppCalls.patch(`/order/chap/${order.id}/accept`);
                       showToast(
                         "success",
                         "Accepted",
@@ -679,7 +678,7 @@ export default function ChapChapOrderScreen() {
                   "Are you sure this order is delivered?",
                   async () => {
                     try {
-                      await AppCalls.put(`/order/chap/${order.id}/deliver`);
+                      await AppCalls.patch(`/order/chap/${order.id}/deliver`);
                       showToast(
                         "success",
                         "Delivered",
@@ -714,7 +713,7 @@ export default function ChapChapOrderScreen() {
                   "Are you sure you want to cancel this order? This action cannot be undone.",
                   async () => {
                     try {
-                      await AppCalls.put(`/order/chap/${order.id}/cancel`);
+                      await AppCalls.patch(`/order/chap/${order.id}/cancel`);
                       showToast(
                         "success",
                         "Cancelled",
