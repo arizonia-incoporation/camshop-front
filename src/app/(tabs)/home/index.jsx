@@ -1040,7 +1040,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   serviceCard: {
-    width: "49%",
+    width: "47%",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
     paddingVertical: 16,

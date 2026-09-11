@@ -1,4 +1,3 @@
-// app/(profile)/shared/chapchap.js
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
