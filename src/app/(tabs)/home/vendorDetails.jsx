@@ -59,13 +59,13 @@ const VendorProfileScreen = () => {
     Alert.alert(
       isFollowing ? "Unfollowed" : "Followed",
       isFollowing
-        ? `You have unfollowed ${vendor.shopName}`
-        : `You are now following ${vendor.shopName}`,
+        ? `You have unfollowed ${vendor?.shopName}`
+        : `You are now following ${vendor?.shopName}`,
     );
   };
 
   const handleMessage = () => {
-    Alert.alert("Message", `Start a conversation with ${vendor.shopName}`);
+    Alert.alert("Message", `Start a conversation with ${vendor?.shopName}`);
   };
 
   const handleLoadMore = () => {
@@ -155,7 +155,6 @@ const VendorProfileScreen = () => {
         <Image source={{ uri: item.image }} style={styles.productImage} />
         <View style={styles.productInfo}>
           <Text style={styles.productName}>{item.name}</Text>
-          <Text style={styles.productCategory}>Category: {item.category}</Text>
           <Text style={styles.productPrice}>{formatPrice(item.price)}</Text>
         </View>
         <TouchableOpacity
@@ -194,7 +193,7 @@ const VendorProfileScreen = () => {
       onCardPress={() =>
         navigation.push("home/productDetails?productId=" + item?.id)
       }
-      onEdit={() => navigation.push()} // Add your edit route here
+      onEdit={() => {}} // Add your edit route here
     />
   );
 
@@ -229,8 +228,8 @@ const VendorProfileScreen = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       <SEO
-        title={`${vendor.name} | Camshop Busitema`}
-        description={`Buy ${vendor?.products.map(item=>item?.name)} from ${vendor.name}. Fast campus delivery available.`}
+        title={`${vendor?.name} | Camshop Busitema`}
+        description={`Buy ${vendor?.products.map(item=>item?.name)} from ${vendor?.name}. Fast campus delivery available.`}
       />
 
       {/* Header */}
@@ -254,23 +253,23 @@ const VendorProfileScreen = () => {
       >
         {/* Cover Image */}
         <View style={styles.coverContainer}>
-          <Image source={{ uri: vendor.image }} style={styles.coverImage} />
+          <Image source={{ uri: vendor?.image }} style={styles.coverImage} />
         </View>
 
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.profileImageContainer}>
-            <Image source={{ uri: vendor.image }} style={styles.profileImage} />
+            <Image source={{ uri: vendor?.image }} style={styles.profileImage} />
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{vendor.name}</Text>
-            <Text style={styles.shopName}>{vendor.address}</Text>
+            <Text style={styles.profileName}>{vendor?.name}</Text>
+            <Text style={styles.shopName}>{vendor?.address}</Text>
           </View>
         </View>
 
         {/* Bio */}
         <View style={styles.bioContainer}>
-          <Text style={styles.bioText}>{vendor.description}</Text>
+          <Text style={styles.bioText}>{vendor?.description}</Text>
         </View>
 
         {/* Stats */}
@@ -278,17 +277,17 @@ const VendorProfileScreen = () => {
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>RATING</Text>
             <Text style={styles.statValue}>
-              {Math.floor(vendor.stars || 0)} ★
+              {Math.floor(vendor?.stars || 0)} ★
             </Text>
             <Text style={styles.statSubtext}>
-              ({vendor._count.ratings} reviews)
+              ({vendor?._count.ratings} reviews)
             </Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>MEMBER SINCE</Text>
             <Text style={styles.statValue}>
-              {new Date(vendor.createdAt).toLocaleDateString("en-US", {
+              {new Date(vendor?.createdAt).toLocaleDateString("en-US", {
                 month: "short",
                 year: "numeric",
               })}
@@ -297,7 +296,7 @@ const VendorProfileScreen = () => {
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statLabel}>PRODUCTS</Text>
-            <Text style={styles.statValue}>{vendor._count.products}</Text>
+            <Text style={styles.statValue}>{vendor?._count.products}</Text>
           </View>
         </View>
 
@@ -370,7 +369,7 @@ const VendorProfileScreen = () => {
           </View>
 
           <FlatList
-            data={vendor.products}
+            data={vendor?.products}
             renderItem={renderAllProduct}
             keyExtractor={(item) => `all-${item.id}`}
             scrollEnabled={false}
@@ -383,7 +382,7 @@ const VendorProfileScreen = () => {
             }
           />
 
-          {vendor?.products?.length > vendor._count.products && (
+          {vendor?.products?.length > vendor?._count.products && (
             <TouchableOpacity
               style={styles.loadMoreButton}
               onPress={handleLoadMore}
