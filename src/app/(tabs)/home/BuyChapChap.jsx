@@ -799,13 +799,23 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#e5e5e5",
-    paddingLeft: 16,
+    paddingLeft: 12, // Reduced slightly to save horizontal space
+    paddingRight: 4, // Added to prevent button clipping
   },
-  input: { flex: 1.5, paddingVertical: 14, fontSize: 16, color: "#334155" },
-  inputPrice: {
-    flex: 1,
+  input: {
+    flex: 1, // Adjusted flex ratio
+    flexShrink: 1, // Allows the input to shrink below its content width
+    minWidth: 0, // Prevents placeholder from forcing a minimum width
     paddingVertical: 14,
-    fontSize: 15,
+    fontSize: 15, // Scaled down slightly for small screens
+    color: "#334155",
+  },
+  inputPrice: {
+    flex: 0.8, // Takes up slightly less space than the item name
+    flexShrink: 1, // Allows shrinking
+    minWidth: 0, // Prevents placeholder overflow
+    paddingVertical: 14,
+    fontSize: 14,
     color: "#334155",
     borderLeftWidth: 1,
     borderLeftColor: "#f0f0f0",
@@ -813,15 +823,16 @@ const styles = StyleSheet.create({
   },
   addButton: {
     backgroundColor: colors.lime,
-    width: 44,
-    height: 44,
+    width: 40, // Reduced from 44 to fit better on compact devices
+    height: 40,
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    margin: 4,
+    margin: 2,
+    marginLeft: 6,
   },
   addButtonDisabled: { backgroundColor: "#cccccc" },
-
+  
   // List Section
   listSection: { marginTop: 20 },
   listHeader: {
